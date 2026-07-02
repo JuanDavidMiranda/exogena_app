@@ -16,10 +16,12 @@ from xml.dom import minidom
 from datetime import datetime
 import io
 
-from Core.diagnostics import analizar_obligatoriedad
-from Core.auditors import ejecutar_conciliacion_posicional
-from Core.xml_generators import procesar_dinamico_xml
-
+from Service.diagnostic_service import ejecutar_diagnostico_service
+from Service.audit_service import ejecutar_auditoria_service
+from Service.xml_service import (
+    obtener_pestanas_validas_service,
+    generar_xml_service
+)
 # ==========================================
 # PARCHE SEGURO PARA WINDOWS (COMPATIBLE PYTHON 3.14+)
 # ==========================================
@@ -48,52 +50,80 @@ opcion = st.sidebar.selectbox("Seleccione una opción de visualización:", [
 if opcion == "Diagnóstico Preliminar de Formatos":
     st.header("📋 Diagnóstico Inteligente de Medios Magnéticos")
     archivo_maestro = st.file_uploader("Sube el libro de Excel con los formatos", type=["xlsx"])
-    
+
     if archivo_maestro is not None:
-        formatos_analizados = analizar_obligatoriedad(archivo_maestro)
-        if formatos_analizados:
-            st.dataframe(pd.DataFrame(formatos_analizados), use_container_width=True)
-            st.markdown("### 💡 Plan de Acción Sugerido:")
-            for f in formatos_analizados:
-                if "🟢" in f["Dictamen"]:
-                    st.success(f"**{f['Formato DIAN']} ({f['Nombre de la Pestaña']}):** Acción requerida. Se detectaron **{f['Terceros Detectados']}** registros.")
-                else:
-                    st.error(f"**{f['Formato DIAN']} ({f['Nombre de la Pestaña']}):** Omitir. Hoja vacía.")
-        else:
-            st.warning("⚠️ No se identificaron pestañas válidas.")
+        try:
+            resultado = ejecutar_diagnostico_service(archivo_maestro)
+
+            if resultado["resultados"]:
+                st.dataframe(resultado["resultados"], use_container_width=True)
+
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Formatos analizados", resultado["total_formatos"])
+                c2.metric("Con datos", resultado["formatos_con_datos"])
+                c3.metric("Vacíos", resultado["formatos_vacios"])
+
+                st.markdown("### 💡 Plan de Acción Sugerido:")
+                for f in resultado["resultados"]:
+                    if "🟢" in f["Dictamen"]:
+                        st.success(
+                            f"**{f['Formato DIAN']} ({f['Nombre de la Pestaña']}):** "
+                            f"Acción requerida. Se detectaron **{f['Terceros Detectados']}** registros."
+                        )
+                    else:
+                        st.error(
+                            f"**{f['Formato DIAN']} ({f['Nombre de la Pestaña']}):** "
+                            f"Omitir. Hoja vacía."
+                        )
+            else:
+                st.warning("⚠️ No se identificaron pestañas válidas.")
+
+        except Exception as e:
+            st.error(f"❌ Error en el diagnóstico: {e}")
 
 # --- MÓDULO 2: CONCILIACIÓN ---
-elif opcion == "Comparar Excel Dian vs Novasoft": 
+elif opcion == "Comparar Excel Dian vs Novasoft":
     st.header("🔄 Auditoría de Datos: Novasoft vs Formatos DIAN")
+
     col1, col2 = st.columns(2)
     with col1:
         archivo_novasoft = st.file_uploader("Sube el reporte de NOVASOFT", type=["xlsx", "xls", "csv"])
     with col2:
         archivo_dian = st.file_uploader("Sube el borrador de formato DIAN", type=["xlsx", "csv"])
-        
+
     if archivo_novasoft and archivo_dian:
         try:
-            dif_montos, solo_dian, solo_novasoft = ejecutar_conciliacion_posicional(archivo_novasoft, archivo_dian)
-            
+            resultado = ejecutar_auditoria_service(archivo_novasoft, archivo_dian)
+
             st.success("✅ Cruce completado con éxito.")
+
             c1, c2, c3 = st.columns(3)
-            c1.metric("Diferencias en Montos", len(dif_montos))
-            c2.metric("Solo en DIAN", len(solo_dian))
-            c3.metric("Solo en Novasoft", len(solo_novasoft))
+            c1.metric("Diferencias en Montos", resultado["resumen"]["diferencias_montos"])
+            c2.metric("Solo en DIAN", resultado["resumen"]["solo_dian"])
+            c3.metric("Solo en Novasoft", resultado["resumen"]["solo_novasoft"])
+
+            dif_montos = resultado["dif_montos"]
+            solo_dian = resultado["solo_dian"]
+            solo_novasoft = resultado["solo_novasoft"]
+
+            import io
+            import pandas as pd
 
             buffer = io.BytesIO()
             with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
                 dif_montos.to_excel(writer, sheet_name='Diferencias_Montos', index=False)
                 solo_dian.to_excel(writer, sheet_name='Solo_en_DIAN', index=False)
                 solo_novasoft.to_excel(writer, sheet_name='Solo_en_Novasoft', index=False)
+
             buffer.seek(0)
-            
+
             st.download_button(
                 label="📥 Descargar Conciliación Final (.xlsx)",
                 data=buffer,
                 file_name="conciliacion_final_exogena.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
+
         except Exception as e:
             st.error(f"❌ Error al procesar estructuras: {e}")
 
@@ -108,60 +138,41 @@ if opcion == "Generar XML para la DIAN":
     with col2:
         envio = st.number_input("Número de Envío:", min_value=1, max_value=9999, value=1)
     with col3:
-        st.info("ℹ️ Las versiones del XML se configuran automáticamente (1001 v10, 1003 v7, 1005 v9, 1006 v8, 1007 v9).")
+        st.info("ℹ️ Las versiones del XML se configuran automáticamente.")
 
     archivo_excel = st.file_uploader("Carga el archivo de Excel oficial (.xlsx):", type=["xlsx"])
 
     if archivo_excel is not None:
         try:
-            xls = pd.ExcelFile(archivo_excel)
-            pestanas_disponibles = xls.sheet_names
-            
-            # Filtrar solo pestañas asociadas a formatos válidos
-            pestanas_formatos = [p for p in pestanas_disponibles if any(f in p for f in ["1001", "1003", "1004", "1005", "1006", "1007"])]
-            
-            if not pestanas_formatos:
-                pestanas_formatos = pestanas_disponibles
+            pestanas_formatos = obtener_pestanas_validas_service(archivo_excel)
+            pestana_seleccionada = st.selectbox(
+                "Selecciona la pestaña del formato a procesar:",
+                pestanas_formatos
+            )
 
-            pestana_seleccionada = st.selectbox("Selecciona la pestaña del formato a procesar:", pestanas_formatos)
-            
-            # Extraer el número de formato
-            formato_detectado = "".join(filter(str.isdigit, pestana_seleccionada))
-            if not formato_detectado:
-                formato_detectado = "1001"
-
-            # Tabla de mapeo de versiones oficiales DIAN
-            versiones_formatos = {"1001": 10, "1003": 7, "1004": 8, "1005": 9, "1006": 8, "1007": 9}
-            version_oficial = versiones_formatos.get(str(formato_detectado), 9)
-
-            if st.button(f"🚀 Generar XML del Formato {formato_detectado}"):
-                with st.spinner(f"Procesando filas de la pestaña '{pestana_seleccionada}'..."):
-                    
-                    # Llamar al motor unificado y dinámico de core.xml_generators
-                    xml_bytes, total_registros, total_cuantias = procesar_dinamico_xml(
-                        archivo_xml_insumo=archivo_excel,
+            if st.button("🚀 Generar XML"):
+                with st.spinner(f"Procesando la pestaña '{pestana_seleccionada}'..."):
+                    resultado = generar_xml_service(
+                        archivo_excel=archivo_excel,
                         pestana_seleccionada=pestana_seleccionada,
-                        año_gravable=ano,
-                        version_xml=version_oficial,
-                        num_envio=envio,
-                        formato_detectado=str(formato_detectado)
+                        ano=ano,
+                        envio=envio
                     )
-                    
-                    nombre_archivo_xml = f"Dmuisca_01{str(formato_detectado).zfill(4)}{str(version_oficial).zfill(2)}{ano}{str(envio).zfill(8)}.xml"
-                    
-                    st.success(f"✅ ¡XML del Formato {formato_detectado} generado exitosamente!")
-                    
+
+                    st.success(
+                        f"✅ ¡XML del Formato {resultado['formato_detectado']} generado exitosamente!"
+                    )
+
                     c1, c2 = st.columns(2)
-                    c1.metric("Cantidad de Terceros Reportados", f"{total_registros:,}")
-                    c2.metric("Suma Total de Cuantías", f"${total_cuantias:,.0f}")
-                    
+                    c1.metric("Cantidad de Terceros Reportados", f"{resultado['total_registros']:,}")
+                    c2.metric("Suma Total de Cuantías", f"${resultado['total_cuantias']:,.0f}")
+
                     st.download_button(
                         label="💾 Descargar Archivo XML Oficial",
-                        data=xml_bytes,
-                        file_name=nombre_archivo_xml,
+                        data=resultado["xml_bytes"],
+                        file_name=resultado["nombre_archivo"],
                         mime="text/xml"
                     )
-                    
+
         except Exception as e:
-             st.error("❌ Error durante el procesamiento")
-             st.code(traceback.format_exc())
+            st.error(f"❌ Error durante el procesamiento: {e}")
