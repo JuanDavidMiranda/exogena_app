@@ -23,13 +23,15 @@ if sys.platform == "win32":
         pass
 
 # ==========================================
-# IMPORTS UI
+# IMPORTS UI Y AUTH
 # ==========================================
 from Ui.styles import load_global_styles
 from Ui.components import render_hero, render_sidebar
+from Ui.Pages.login_page import render_login_page
 from Ui.Pages.diagnostico_page import render_diagnostico_page
 from Ui.Pages.auditoria_page import render_auditoria_page
 from Ui.Pages.xml_page import render_xml_page
+from Service.auth_service import inicializar_sesion, usuario_autenticado
 
 # ==========================================
 # CONFIGURACIÓN DE LA APP
@@ -42,15 +44,24 @@ st.set_page_config(
 )
 
 # ==========================================
-# CARGAR ESTILOS Y LAYOUT BASE
+# ESTILOS Y SESIÓN
 # ==========================================
 load_global_styles()
+inicializar_sesion()
+
+# ==========================================
+# BLOQUEO SI NO HAY LOGIN
+# ==========================================
+if not usuario_autenticado():
+    render_login_page()
+    st.stop()
+
+# ==========================================
+# APP PRINCIPAL
+# ==========================================
 render_hero()
 opcion = render_sidebar()
 
-# ==========================================
-# ROUTING DE PÁGINAS
-# ==========================================
 if opcion == "Diagnóstico Preliminar de Formatos":
     render_diagnostico_page()
 

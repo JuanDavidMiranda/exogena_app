@@ -1,5 +1,5 @@
 import streamlit as st
-
+from Service.auth_service import obtener_usuario_actual, logout_service
 
 def render_hero():
     st.markdown("""
@@ -20,8 +20,20 @@ def render_hero():
 
 def render_sidebar():
     with st.sidebar:
+        usuario = obtener_usuario_actual()
+
         st.markdown("## 📊 EXÓGENA DIAN")
         st.caption("Automatización tributaria para medios magnéticos")
+
+        if usuario:
+            st.markdown("---")
+            st.markdown("### 👤 Sesión activa")
+            st.caption(f"**Usuario:** {usuario.get('nombre', 'Sin nombre')}")
+            st.caption(f"**Rol:** {usuario.get('rol', 'usuario')}")
+
+            if st.button("Cerrar sesión"):
+                logout_service()
+                st.rerun()
 
         st.markdown("---")
         opcion = st.selectbox(
