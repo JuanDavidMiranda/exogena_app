@@ -1,5 +1,13 @@
 import pandas as pd
 
+from Core.validators import (
+    buscar_columna_por_alias,
+    validar_columnas_minimas,
+    contar_vacios_columna,
+    detectar_filas_total
+)
+from Service.normative_service import obtener_aliases_formato
+
 def analizar_obligatoriedad(archivo_maestro):
     excel_m = pd.ExcelFile(archivo_maestro)
     pestanas = excel_m.sheet_names
@@ -48,3 +56,94 @@ def analizar_obligatoriedad(archivo_maestro):
                 "Dictamen": estado
             })
     return formatos_analizados
+
+def diagnosticar_dataframe_exogena(df, formato, vigencia=2025):
+    aliases_formato = obtener_aliases_formato(formato, vigencia)
+    columnas = list(df.columns)
+
+    # Detectar columnas principales por aliases normativos
+    col_nit = buscar_columna_por_alias(columnas, aliases_formato.get("nit", []))
+    col_tdoc = buscar_columna_por_alias(columnas, aliases_formato.get("tdoc", []))
+    col_cpt = buscar_columna_por_alias(columnas, aliases_formato.get("concepto", []))
+    col_dv = buscar_columna_por_alias(columnas, aliases_formato.get("dv", []))
+    col_raz = buscar_columna_por_alias(columnas, aliases_formato.get("razon_social", []))
+    col_apl1 = buscar_columna_por_alias(columnas, aliases_formato.get("primer_apellido", []))
+    col_apl2 = buscar_columna_por_alias(columnas, aliases_formato.get("segundo_apellido", []))
+    col_nom1 = buscar_columna_por_alias(columnas, aliases_formato.get("primer_nombre", []))
+    col_nom2 = buscar_columna_por_alias(columnas, aliases_formato.get("otros_nombres", []))
+
+    columnas_detectadas = {
+        "nit": col_nit,
+        "tdoc": col_tdoc,
+        "concepto": col_cpt,
+        "dv": col_dv,
+        "razon_social": col_raz,
+        "primer_apellido": col_apl1,
+        "segundo_apellido": col_apl2,
+        "primer_nombre": col_nom1,
+        "otros_nombres": col_nom2
+    }
+
+    validacion_estructura = validar_columnas_minimas(df, formato, vigencia)
+
+    errores = []
+    advertencias = []
+
+    # Validaciones de columnas críticas
+    if col_nit:
+        vacios_nit = contar_vacios_columna(df, col_nit)
+        if vacios_nit > 0:
+            errores.append(f"Se encontraron {vacios_nit} registros con NIT/identificación vacío.")
+    else:
+        errores.append("No se detectó columna de NIT/identificación.")
+
+    if col_tdoc:
+        vacios_tdoc = contar_vacios_columna(df, col_tdoc)
+        if vacios_tdoc > 0:
+            errores.append(f"Se encontraron {vacios_tdoc} registros con tipo de documento vacío.")
+    else:
+        advertencias.append("No se detectó columna de tipo de documento.")
+
+    if col_cpt:
+        vacios_cpt = contar_vacios_columna(df, col_cpt)
+        if vacios_cpt > 0:
+            advertencias.append(f"Se encontraron {vacios_cpt} registros con concepto vacío.")
+    else:
+        advertencias.append("No se detectó columna de concepto.")
+
+    # Validación de estructura mínima del formato
+    if not validacion_estructura["valido"]:
+        faltantes = ", ".join(validacion_estructura["faltantes"])
+        errores.append(
+            f"Faltan columnas mínimas requeridas para el formato {formato}: {faltantes}"
+        )
+
+    # Detectar filas tipo TOTAL / resumen
+    filas_total = detectar_filas_total(df)
+    if filas_total:
+        advertencias.append(
+            f"Se detectaron posibles filas de total o resumen en las filas: "
+            f"{', '.join(map(str, filas_total[:10]))}"
+            + ("..." if len(filas_total) > 10 else "")
+        )
+
+    estado_general = "OK"
+    if errores:
+        estado_general = "CON ERRORES"
+    elif advertencias:
+        estado_general = "CON ADVERTENCIAS"
+
+    return {
+        "formato": formato,
+        "vigencia": vigencia,
+        "estado_general": estado_general,
+        "columnas_detectadas": columnas_detectadas,
+        "validacion_estructura": validacion_estructura,
+        "errores": errores,
+        "advertencias": advertencias,
+        "resumen": {
+            "total_registros": len(df),
+            "columnas_encontradas": len(df.columns),
+            "filas_total_detectadas": len(filas_total)
+        }
+    }

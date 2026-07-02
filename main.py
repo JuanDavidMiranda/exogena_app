@@ -16,7 +16,10 @@ from xml.dom import minidom
 from datetime import datetime
 import io
 
-from Service.diagnostic_service import ejecutar_diagnostico_service
+from Service.diagnostic_service import (
+    ejecutar_diagnostico_service,
+    diagnosticar_formato_excel_service
+)
 from Service.audit_service import ejecutar_auditoria_service
 from Service.xml_service import (
     obtener_pestanas_validas_service,
@@ -150,29 +153,97 @@ if opcion == "Generar XML para la DIAN":
                 pestanas_formatos
             )
 
-            if st.button("🚀 Generar XML"):
-                with st.spinner(f"Procesando la pestaña '{pestana_seleccionada}'..."):
-                    resultado = generar_xml_service(
-                        archivo_excel=archivo_excel,
-                        pestana_seleccionada=pestana_seleccionada,
-                        ano=ano,
-                        envio=envio
-                    )
+            # Detectar formato desde el nombre de la pestaña
+            formato_detectado = None
+            for fmt in ["1001", "1003", "1004", "1005", "1006", "1007", "1008", "1009"]:
+                if fmt in pestana_seleccionada:
+                    formato_detectado = fmt
+                    break
 
-                    st.success(
-                        f"✅ ¡XML del Formato {resultado['formato_detectado']} generado exitosamente!"
-                    )
+            if formato_detectado:
+                st.info(f"📌 Formato detectado: {formato_detectado}")
+            else:
+                st.warning("No se pudo detectar el formato DIAN desde el nombre de la pestaña.")
 
-                    c1, c2 = st.columns(2)
-                    c1.metric("Cantidad de Terceros Reportados", f"{resultado['total_registros']:,}")
-                    c2.metric("Suma Total de Cuantías", f"${resultado['total_cuantias']:,.0f}")
+            col_btn1, col_btn2 = st.columns(2)
 
-                    st.download_button(
-                        label="💾 Descargar Archivo XML Oficial",
-                        data=resultado["xml_bytes"],
-                        file_name=resultado["nombre_archivo"],
-                        mime="text/xml"
-                    )
+            with col_btn1:
+                if st.button("🩺 Diagnosticar hoja antes de generar XML"):
+                    if not formato_detectado:
+                        st.error("No fue posible detectar el formato de la pestaña seleccionada.")
+                    else:
+                        diagnostico = diagnosticar_formato_excel_service(
+                            archivo_excel=archivo_excel,
+                            pestana_seleccionada=pestana_seleccionada,
+                            formato_detectado=formato_detectado,
+                            vigencia=ano
+                        )
+
+                        st.subheader("Resultado del diagnóstico del formato")
+                        st.write(f"**Formato:** {diagnostico['formato']}")
+                        st.write(f"**Vigencia:** {diagnostico['vigencia']}")
+                        st.write(f"**Estado general:** {diagnostico['estado_general']}")
+
+                        st.markdown("### 📊 Resumen")
+                        r = diagnostico["resumen"]
+                        c1, c2, c3 = st.columns(3)
+                        c1.metric("Registros detectados", r["total_registros"])
+                        c2.metric("Columnas encontradas", r["columnas_encontradas"])
+                        c3.metric("Filas TOTAL detectadas", r["filas_total_detectadas"])
+
+                        st.markdown("### 🧭 Columnas detectadas")
+                        columnas_detectadas = diagnostico["columnas_detectadas"]
+                        df_cols = pd.DataFrame(
+                            [
+                                {"Campo lógico": k, "Columna detectada": v if v else "No detectada"}
+                                for k, v in columnas_detectadas.items()
+                            ]
+                        )
+                        st.dataframe(df_cols, use_container_width=True)
+
+                        st.markdown("### 🏗️ Validación de estructura")
+                        estructura = diagnostico["validacion_estructura"]
+                        st.write(f"**¿Estructura válida?** {'Sí' if estructura['valido'] else 'No'}")
+                        st.write("**Columnas mínimas presentes:**", estructura["presentes"])
+                        st.write("**Columnas mínimas faltantes:**", estructura["faltantes"])
+
+                        if diagnostico["errores"]:
+                            st.markdown("### ❌ Errores")
+                            for err in diagnostico["errores"]:
+                                st.error(err)
+
+                        if diagnostico["advertencias"]:
+                            st.markdown("### ⚠️ Advertencias")
+                            for adv in diagnostico["advertencias"]:
+                                st.warning(adv)
+
+                        if not diagnostico["errores"] and not diagnostico["advertencias"]:
+                            st.success("El archivo no presenta observaciones críticas para la generación del XML.")
+
+            with col_btn2:
+                if st.button("🚀 Generar XML"):
+                    with st.spinner(f"Procesando la pestaña '{pestana_seleccionada}'..."):
+                        resultado = generar_xml_service(
+                            archivo_excel=archivo_excel,
+                            pestana_seleccionada=pestana_seleccionada,
+                            ano=ano,
+                            envio=envio
+                        )
+
+                        st.success(
+                            f"✅ ¡XML del Formato {resultado['formato_detectado']} generado exitosamente!"
+                        )
+
+                        c1, c2 = st.columns(2)
+                        c1.metric("Cantidad de Terceros Reportados", f"{resultado['total_registros']:,}")
+                        c2.metric("Suma Total de Cuantías", f"${resultado['total_cuantias']:,.0f}")
+
+                        st.download_button(
+                            label="💾 Descargar Archivo XML Oficial",
+                            data=resultado["xml_bytes"],
+                            file_name=resultado["nombre_archivo"],
+                            mime="text/xml"
+                        )
 
         except Exception as e:
             st.error(f"❌ Error durante el procesamiento: {e}")
