@@ -1,4 +1,4 @@
-from Services.normative_service import (
+from Service.normative_service import (
     obtener_columnas_minimas_formato,
     obtener_regla_formato
 )
