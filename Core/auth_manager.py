@@ -1,6 +1,9 @@
 import json
 import os
-from werkzeug.security import generate_password_hash, check_password_hash
+import hashlib
+import hmac
+import secrets
+import base64
 
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -47,6 +50,63 @@ def existe_usuario(username):
     return username.strip().lower() in usuarios
 
 
+# ==========================================================
+# FUNCIONES DE HASH SIN DEPENDENCIAS EXTERNAS
+# ==========================================================
+def hash_password(password: str) -> str:
+    """
+    Genera un hash seguro con PBKDF2-HMAC-SHA256.
+    Guarda el resultado en formato:
+    pbkdf2_sha256$iteraciones$salt_base64$hash_base64
+    """
+    if not isinstance(password, str):
+        raise ValueError("La contraseña debe ser texto.")
+
+    salt = secrets.token_bytes(16)
+    iterations = 100_000
+
+    pwd_hash = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt,
+        iterations
+    )
+
+    salt_b64 = base64.b64encode(salt).decode("utf-8")
+    hash_b64 = base64.b64encode(pwd_hash).decode("utf-8")
+
+    return f"pbkdf2_sha256${iterations}${salt_b64}${hash_b64}"
+
+
+def verify_password(password: str, stored_hash: str) -> bool:
+    """
+    Verifica una contraseña contra un hash almacenado.
+    """
+    try:
+        algorithm, iterations, salt_b64, hash_b64 = stored_hash.split("$")
+        if algorithm != "pbkdf2_sha256":
+            return False
+
+        iterations = int(iterations)
+        salt = base64.b64decode(salt_b64.encode("utf-8"))
+        original_hash = base64.b64decode(hash_b64.encode("utf-8"))
+
+        test_hash = hashlib.pbkdf2_hmac(
+            "sha256",
+            password.encode("utf-8"),
+            salt,
+            iterations
+        )
+
+        return hmac.compare_digest(original_hash, test_hash)
+
+    except Exception:
+        return False
+
+
+# ==========================================================
+# CRUD BÁSICO DE USUARIOS
+# ==========================================================
 def crear_usuario(nombre, username, password, rol="usuario"):
     """
     Crea un usuario nuevo con contraseña hasheada.
@@ -68,7 +128,7 @@ def crear_usuario(nombre, username, password, rol="usuario"):
     if username in usuarios:
         raise ValueError("El usuario ya existe. Elige otro nombre de usuario.")
 
-    password_hash = generate_password_hash(password)
+    password_hash = hash_password(password)
 
     usuarios[username] = {
         "nombre": nombre,
@@ -102,7 +162,7 @@ def autenticar_usuario(username, password):
     usuario = usuarios[username]
     password_hash = usuario.get("password_hash", "")
 
-    if not check_password_hash(password_hash, password):
+    if not verify_password(password, password_hash):
         raise ValueError("Contraseña incorrecta.")
 
     return {
