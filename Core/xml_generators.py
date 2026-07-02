@@ -7,7 +7,12 @@ import xml.etree.ElementTree as ET
 import pandas as pd
 import numpy as np
 from Utils.helpers import inicializar_encabezado, generar_xml_bytes
-import pandas as pd
+from Core.validators import buscar_columna_por_alias
+from Service.normative_service import (
+    obtener_tag_xml_formato,
+    obtener_defaults_ubicacion,
+    obtener_aliases_formato
+)
 
 def entero_seguro(valor):
     """
@@ -74,41 +79,44 @@ def procesar_dinamico_xml(
     )
     
     columnas = list(df_datos.columns)
+    fmt_str = str(formato_detectado).strip()
 
-    # 2. Identificación tolerante y posicional de columnas críticas
-    # Si falla por nombre exacto, toma la 3ra o 4ta columna que suele ser el NIT
-    col_nit = next((c for c in columnas if any(x in c for x in ['NUMERO', 'IDENTIFICACION', 'NIT', 'NID'])), None)
+    # Traer configuración normativa del formato
+    tag_registro = obtener_tag_xml_formato(fmt_str, 2025)
+    defaults_ubicacion = obtener_defaults_ubicacion(2025)
+    aliases_formato = obtener_aliases_formato(fmt_str, 2025)
+
+    # 2. Identificación de columnas usando aliases normativos
+    col_nit = buscar_columna_por_alias(columnas, aliases_formato.get("nit", []))
     if not col_nit and len(columnas) > 2:
-        col_nit = columnas[2] # Fallback posicional (Columna C)
+        col_nit = columnas[2]  # fallback posicional
 
-    col_tdoc = next((c for c in columnas if 'TIPO' in c or 'TDOC' in c), None)
+    col_tdoc = buscar_columna_por_alias(columnas, aliases_formato.get("tdoc", []))
     if not col_tdoc and len(columnas) > 1:
-        col_tdoc = columnas[1] # Fallback posicional (Columna B)
+        col_tdoc = columnas[1]  # fallback posicional
 
-    col_cpt = next((c for c in columnas if 'CONCEPTO' in c or 'CPT' in c), None)
+    col_cpt = buscar_columna_por_alias(columnas, aliases_formato.get("concepto", []))
     if not col_cpt and len(columnas) > 0:
-        col_cpt = columnas[0] # Fallback posicional (Columna A)
+        col_cpt = columnas[0]  # fallback posicional
 
-    col_dv = next((c for c in columnas if 'DV' in c or 'D.V.' in c), None)
-    
-    # Columnas de Nombre / Razón Social
-    col_raz = next((c for c in columnas if 'RAZON' in c or 'SOCIAL' in c), None)
-    col_apl1 = next((c for c in columnas if 'APELLIDO' in c and 'PRIMER' in c), None)
-    col_apl2 = next((c for c in columnas if 'APELLIDO' in c and 'SEGUNDO' in c), None)
-    col_nom1 = next((c for c in columnas if 'NOMBRE' in c and 'PRIMER' in c), None)
-    col_nom2 = next((c for c in columnas if 'NOMBRE' in c and ('SEGUNDO' in c or 'OTROS' in c)), None)
+    col_dv = buscar_columna_por_alias(columnas, aliases_formato.get("dv", []))
+    col_raz = buscar_columna_por_alias(columnas, aliases_formato.get("razon_social", []))
+    col_apl1 = buscar_columna_por_alias(columnas, aliases_formato.get("primer_apellido", []))
+    col_apl2 = buscar_columna_por_alias(columnas, aliases_formato.get("segundo_apellido", []))
+    col_nom1 = buscar_columna_por_alias(columnas, aliases_formato.get("primer_nombre", []))
+    col_nom2 = buscar_columna_por_alias(columnas, aliases_formato.get("otros_nombres", []))
 
     # 3. Configuración de Etiquetas XML oficiales de la DIAN por número de formato
+    from Service.normative_service import (
+        obtener_tag_xml_formato,
+        obtener_defaults_ubicacion,
+        obtener_aliases_formato
+    )
+
     fmt_str = str(formato_detectado).strip()
-    config_formatos = {
-        "1001": {"tag": "pagos"},
-        "1003": {"tag": "retenc"},
-        "1004": {"tag": "descto"},
-        "1005": {"tag": "ivades"},
-        "1006": {"tag": "ivagen"},
-        "1007": {"tag": "ingresos"}
-    }
-    tag_registro = config_formatos.get(fmt_str, {"tag": "registros"})["tag"]
+    tag_registro = obtener_tag_xml_formato(fmt_str, 2025)
+    defaults_ubicacion = obtener_defaults_ubicacion(2025)
+    aliases_formato = obtener_aliases_formato(fmt_str, 2025)
 
     # Crear Nodo Principal <mas>
     mas = ET.Element('mas', {
@@ -231,10 +239,10 @@ def procesar_dinamico_xml(
             reg.set('nom2', str(fila[col_nom2]).strip() if col_nom2 and pd.notna(fila[col_nom2]) and str(fila[col_nom2]).lower() != 'nan' else "")
 
         # Atributos de ubicación estándar para evitar rechazos en el validador Muisca
-        reg.set('dir', "ZONA URBANA")
-        reg.set('dpto', "73")
-        reg.set('mun', "001")
-        reg.set('pais', "169")
+        reg.set('dir', defaults_ubicacion.get("direccion", "ZONA URBANA"))
+        reg.set('dpto', defaults_ubicacion.get("departamento", "73"))
+        reg.set('mun', defaults_ubicacion.get("municipio", "001"))
+        reg.set('pais', defaults_ubicacion.get("pais", "169"))
 
         # Inyectar dinámicamente los importes calculados
         for k, v in atributos_montos.items():
