@@ -290,12 +290,8 @@ def load_global_styles():
     }
 
     .login-brand-panel {
-    background: linear-gradient(145deg, #0f172a 0%, #1e3a8a 55%, #2563eb 100%);
-    border-radius: 24px;
+    min-height: 500px;
     padding: 1.4rem 1.3rem;
-    color: white;
-    min-height: 480px;
-    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
     }
 
     .login-brand-title {
