@@ -53,6 +53,12 @@ inicializar_sesion()
 # BLOQUEO SI NO HAY LOGIN
 # ==========================================
 if not usuario_autenticado():
+    st.markdown("""
+        <style>
+        section[data-testid="stSidebar"] {display: none !important;}
+        </style>
+    """, unsafe_allow_html=True)
+
     render_login_page()
     st.stop()
 

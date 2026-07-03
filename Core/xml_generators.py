@@ -8,6 +8,8 @@ import pandas as pd
 import numpy as np
 from Utils.helpers import inicializar_encabezado, generar_xml_bytes
 from Core.validators import buscar_columna_por_alias
+from Core.formatos_config import obtener_aliases_formato, obtener_tag_xml_formato
+from Core.validators import buscar_columna_por_alias
 from Service.normative_service import (
     obtener_tag_xml_formato,
     obtener_defaults_ubicacion,
@@ -34,6 +36,7 @@ def procesar_dinamico_xml(
     num_envio,
     formato_detectado
 ):
+
     # 1. Leer la pestaña completa sin procesar headers para detectar la estructura real
     df_crudo = pd.read_excel(
         archivo_xml_insumo,
@@ -99,12 +102,21 @@ def procesar_dinamico_xml(
     if not col_cpt and len(columnas) > 0:
         col_cpt = columnas[0]  # fallback posicional
 
+    fmt_str = str(formato_detectado).strip()
+
+    aliases_formato = obtener_aliases_formato(fmt_str, 2025)
+
+    col_nit = buscar_columna_por_alias(columnas, aliases_formato.get("nit", []))
+    col_tdoc = buscar_columna_por_alias(columnas, aliases_formato.get("tdoc", []))
+    col_cpt = buscar_columna_por_alias(columnas, aliases_formato.get("concepto", []))
     col_dv = buscar_columna_por_alias(columnas, aliases_formato.get("dv", []))
     col_raz = buscar_columna_por_alias(columnas, aliases_formato.get("razon_social", []))
     col_apl1 = buscar_columna_por_alias(columnas, aliases_formato.get("primer_apellido", []))
     col_apl2 = buscar_columna_por_alias(columnas, aliases_formato.get("segundo_apellido", []))
     col_nom1 = buscar_columna_por_alias(columnas, aliases_formato.get("primer_nombre", []))
     col_nom2 = buscar_columna_por_alias(columnas, aliases_formato.get("otros_nombres", []))
+
+    tag_registro = obtener_tag_xml_formato(fmt_str, 2025)
 
     # 3. Configuración de Etiquetas XML oficiales de la DIAN por número de formato
     from Service.normative_service import (
