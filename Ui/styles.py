@@ -240,16 +240,16 @@ def load_global_styles():
        LOGIN PROFESIONAL
     ========================================================= */
     .login-page-shell {
-        min-height: calc(100vh - 80px);
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        padding: 0.5rem 0 2rem 0;
+    min-height: calc(100vh - 2rem);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0.2rem 0 0.8rem 0;
     }
 
     .login-page-header {
-        text-align: center;
-        margin-bottom: 1.5rem;
+    text-align: center;
+    margin-bottom: 0.8rem;
     }
 
     .login-page-badge {
@@ -265,37 +265,37 @@ def load_global_styles():
     }
 
     .login-page-header h1 {
-        color: #0f172a;
-        font-size: 2rem;
-        font-weight: 800;
-        margin-bottom: 0.45rem;
-        letter-spacing: -0.4px;
+    color: #0f172a;
+    font-size: 1.6rem;
+    font-weight: 800;
+    margin-bottom: 0.35rem;
+    letter-spacing: -0.3px;
     }
 
     .login-page-header p {
-        color: #475569;
-        font-size: 1rem;
-        max-width: 860px;
-        margin: 0 auto;
-        line-height: 1.6;
+    color: #475569;
+    font-size: 0.92rem;
+    max-width: 760px;
+    margin: 0 auto;
+    line-height: 1.45;
     }
 
     .login-layout-card {
-        background: rgba(255,255,255,0.78);
-        border: 1px solid #e2e8f0;
-        border-radius: 28px;
-        padding: 1.2rem;
-        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.10);
-        backdrop-filter: blur(8px);
+    background: rgba(255,255,255,0.78);
+    border: 1px solid #e2e8f0;
+    border-radius: 24px;
+    padding: 0.9rem;
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.10);
+    backdrop-filter: blur(8px);
     }
 
     .login-brand-panel {
-        background: linear-gradient(145deg, #0f172a 0%, #1e3a8a 55%, #2563eb 100%);
-        border-radius: 24px;
-        padding: 2rem 1.6rem;
-        color: white;
-        min-height: 620px;
-        box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
+    background: linear-gradient(145deg, #0f172a 0%, #1e3a8a 55%, #2563eb 100%);
+    border-radius: 24px;
+    padding: 1.4rem 1.3rem;
+    color: white;
+    min-height: 480px;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
     }
 
     .login-brand-title {
@@ -376,11 +376,11 @@ def load_global_styles():
     }
 
     .login-form-card {
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
-        border-radius: 24px;
-        padding: 1.25rem 1.15rem 1rem 1.15rem;
-        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 24px;
+    padding: 1rem 1rem 0.9rem 1rem;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
     }
 
     .login-mini-help {

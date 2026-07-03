@@ -7,14 +7,13 @@ def render_login_page():
     st.markdown('<div class="login-page-shell">', unsafe_allow_html=True)
 
     st.markdown("""
-        <div class="login-page-header">
-            <div class="login-page-badge">🔐 Acceso seguro</div>
-            <h1>Plataforma de Automatización de Información Exógena</h1>
-            <p>
-                Inicia sesión para acceder a los módulos del sistema o crea una cuenta nueva
-                para gestionar procesos de validación, diagnóstico y generación de XML.
-            </p>
-        </div>
+    <div class="login-page-header">
+        <div class="login-page-badge">🔐 Acceso seguro</div>
+        <h1>Plataforma de Información Exógena</h1>
+        <p>
+            Inicia sesión o crea una cuenta para acceder al sistema.
+        </p>
+    </div>
     """, unsafe_allow_html=True)
 
     st.markdown('<div class="login-layout-card">', unsafe_allow_html=True)
