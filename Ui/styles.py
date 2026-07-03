@@ -10,10 +10,20 @@ def load_global_styles():
     }
 
     /* ===== Contenedor principal ===== */
+    /* Quitar espacio superior del contenedor principal */
     .block-container {
-        padding-top: 1.5rem;
-        padding-bottom: 2rem;
-        max-width: 1400px;
+        padding-top: 1rem !important;
+        padding-bottom: 1rem !important;
+        max-width: 1200px;
+    }
+
+    /* Quitar espacio extra del header de Streamlit */
+    header[data-testid="stHeader"] {
+        height: 0rem;
+    }
+
+    div[data-testid="stToolbar"] {
+        display: none;
     }
 
     /* ===== Sidebar ===== */
