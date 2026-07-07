@@ -25,40 +25,63 @@ def render_sidebar():
         st.markdown("## 📊 EXÓGENA DIAN")
         st.caption("Automatización tributaria para medios magnéticos")
 
+        st.divider()
+
         if usuario:
-            st.markdown("---")
             st.markdown("### 👤 Sesión activa")
-            st.caption(f"**Usuario:** {usuario.get('nombre', 'Sin nombre')}")
-            st.caption(f"**Rol:** {usuario.get('rol', 'usuario')}")
+            st.write(f"**{usuario.get('nombre', 'Sin nombre')}**")
+            st.caption(f"Rol: {usuario.get('rol', 'usuario')}")
 
-            if st.button("Cerrar sesión"):
-                logout_service()
-                st.rerun()
+        st.divider()
 
-        st.markdown("---")
-        opcion = st.selectbox(
-            "Módulo de trabajo",
-            [
-                "Diagnóstico Preliminar de Formatos",
-                "Comparar Excel Dian vs Novasoft",
-                "Generar XML para la DIAN"
-            ]
-        )
+        st.markdown("### 📂 Módulos")
 
-        st.markdown("---")
-        st.markdown("### 🧭 Qué hace esta app")
-        st.caption("""
-        - Detecta formatos DIAN en libros de Excel  
-        - Evalúa obligatoriedad preliminar  
-        - Compara estructuras Novasoft vs DIAN  
-        - Genera XML por formato con validaciones previas
-        """)
+        if "modulo" not in st.session_state:
+            st.session_state.modulo = "Diagnóstico Preliminar de Formatos"
 
-        st.markdown("---")
-        st.markdown("### ℹ️ Versión")
-        st.caption("v1.0 · Vigencia base 2025")
+        if st.button(
+            "🔍 Diagnóstico Preliminar",
+            use_container_width=True,
+        ):
+            st.session_state.modulo = "Diagnóstico Preliminar de Formatos"
 
-    return opcion
+        if st.button(
+            "📊 Comparar Excel",
+            use_container_width=True,
+        ):
+            st.session_state.modulo = "Comparar Excel Dian vs Novasoft"
+
+        if st.button(
+            "📄 Generar XML",
+            use_container_width=True,
+        ):
+            st.session_state.modulo = "Generar XML para la DIAN"
+
+        st.divider()
+
+        if st.button(
+            "🚪 Cerrar sesión",
+            use_container_width=True,
+        ):
+            logout_service()
+            st.rerun()
+
+        st.divider()
+
+        with st.expander("🧭 Acerca de la aplicación"):
+            st.caption("""
+            • Detecta formatos DIAN en archivos Excel.
+
+            • Evalúa la obligatoriedad preliminar.
+
+            • Compara la estructura Novasoft vs DIAN.
+
+            • Genera XML listos para presentar ante la DIAN.
+            """)
+
+        st.caption("Versión 1.0 • Vigencia 2025")
+
+    return st.session_state.modulo
 
 
 def section_header(title, subtitle):
