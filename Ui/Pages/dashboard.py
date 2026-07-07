@@ -79,7 +79,13 @@ with col1:
         </p>
     </div>
     """, unsafe_allow_html=True)
-
+    if st.button(
+        "🔍 Abrir Diagnóstico",
+        key="dashboard_diag",
+        use_container_width=True
+    ):
+        st.session_state.modulo = "Diagnóstico Preliminar de Formatos"
+        st.rerun()
 with col2:
     st.markdown("""
     <div class="card">
@@ -91,7 +97,13 @@ with col2:
         </p>
     </div>
     """, unsafe_allow_html=True)
-
+    if st.button(
+        "📊 Abrir Comparador",
+        key="dashboard_compare",
+        use_container_width=True
+    ):
+        st.session_state.modulo = "Comparar Excel Dian vs Novasoft"
+        st.rerun()
     st.write("")
 
     st.markdown("""
@@ -104,7 +116,13 @@ with col2:
         </p>
     </div>
     """, unsafe_allow_html=True)
-
+    if st.button(
+    "📄 Generar XML",
+    key="dashboard_xml",
+    use_container_width=True
+    ):
+        st.session_state.modulo = "Generar XML para la DIAN"
+    st.rerun()
     st.write("")
     st.divider()
 
