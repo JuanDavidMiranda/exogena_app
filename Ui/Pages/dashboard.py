@@ -68,7 +68,11 @@ Selecciona uno de los módulos desde el menú lateral para comenzar a trabajar.
 
 col1, col2 = st.columns(2)
 
+# ===========================
+# TARJETA DIAGNÓSTICO
+# ===========================
 with col1:
+
     st.markdown("""
     <div class="card">
         <div class="icon">🔍</div>
@@ -79,6 +83,7 @@ with col1:
         </p>
     </div>
     """, unsafe_allow_html=True)
+
     if st.button(
         "🔍 Abrir Diagnóstico",
         key="dashboard_diag",
@@ -86,7 +91,13 @@ with col1:
     ):
         st.session_state.modulo = "Diagnóstico Preliminar de Formatos"
         st.rerun()
+
+
+# ===========================
+# TARJETA COMPARAR
+# ===========================
 with col2:
+
     st.markdown("""
     <div class="card">
         <div class="icon">📊</div>
@@ -97,6 +108,7 @@ with col2:
         </p>
     </div>
     """, unsafe_allow_html=True)
+
     if st.button(
         "📊 Abrir Comparador",
         key="dashboard_compare",
@@ -104,51 +116,63 @@ with col2:
     ):
         st.session_state.modulo = "Comparar Excel Dian vs Novasoft"
         st.rerun()
-    st.write("")
 
-    st.markdown("""
-    <div class="card">
-        <div class="icon">📄</div>
-        <h3>Generar XML</h3>
-        <p>
-        Convierte automáticamente los datos del Excel en el XML requerido por la DIAN,
-        realizando las validaciones necesarias antes de la generación.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-    if st.button(
+
+# ===========================
+# TARJETA XML
+# ===========================
+
+st.write("")
+
+st.markdown("""
+<div class="card">
+    <div class="icon">📄</div>
+    <h3>Generar XML</h3>
+    <p>
+    Convierte automáticamente los datos del Excel en el XML requerido por la DIAN,
+    realizando las validaciones necesarias antes de la generación.
+    </p>
+</div>
+""", unsafe_allow_html=True)
+
+if st.button(
     "📄 Generar XML",
     key="dashboard_xml",
     use_container_width=True
-    ):
-        st.session_state.modulo = "Generar XML para la DIAN"
+):
+    st.session_state.modulo = "Generar XML para la DIAN"
     st.rerun()
-    
-    st.write("")
-    st.divider()
 
-    col1, col2, col3 = st.columns(3)
 
-    with col1:
-        st.metric(
-            "Versión",
-            "1.0"
-        )
+# ===========================
+# MÉTRICAS
+# ===========================
 
-    with col2:
-        st.metric(
-            "Vigencia",
-            "2025"
-        )
+st.write("")
+st.divider()
 
-    with col3:
-        st.metric(
-            "Estado",
-            "Operativo ✅"
-        )
+col1, col2, col3 = st.columns(3)
 
-    st.divider()
-
-    st.caption(
-        "Bienvenido a Exógena DIAN. Utiliza el menú lateral para acceder a cada uno de los módulos disponibles."
+with col1:
+    st.metric(
+        "Versión",
+        "1.0"
     )
+
+with col2:
+    st.metric(
+        "Vigencia",
+        "2025"
+    )
+
+with col3:
+    st.metric(
+        "Estado",
+        "Operativo ✅"
+    )
+
+st.divider()
+
+st.caption(
+    "Bienvenido a Exógena DIAN. Utiliza el menú lateral para acceder a cada uno de los módulos disponibles."
+)
