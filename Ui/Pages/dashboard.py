@@ -36,39 +36,74 @@ Selecciona uno de los módulos desde el menú lateral para comenzar a trabajar.
 """
     )
 
+    st.markdown("""
+<style>
+
+.card{
+    background-color:#ffffff;
+    border-radius:15px;
+    padding:25px;
+    border:1px solid #E5E7EB;
+    box-shadow:0 3px 10px rgba(0,0,0,.08);
+    height:220px;
+    margin-bottom:10px;
+}
+
+.card h3{
+    margin-top:10px;
+    color:#2563eb;
+}
+
+.card p{
+    color:#555555;
+    line-height:1.6;
+}
+
+.icon{
+    font-size:40px;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.markdown("""
+    <div class="card">
+        <div class="icon">🔍</div>
+        <h3>Diagnóstico Preliminar</h3>
+        <p>
+        Analiza el archivo Excel para detectar automáticamente los formatos DIAN
+        presentes y verificar su estructura antes del procesamiento.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col2:
+    st.markdown("""
+    <div class="card">
+        <div class="icon">📊</div>
+        <h3>Comparar Excel</h3>
+        <p>
+        Compara la estructura del archivo Novasoft con la plantilla oficial de la
+        DIAN para identificar diferencias y posibles inconsistencias.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
     st.write("")
 
-    col1, col2 = st.columns(2)
-
-    with col1:
-
-        st.info(
-            """
-### 🔍 Diagnóstico Preliminar
-
-Detecta automáticamente los formatos presentes en el Excel y verifica si contienen información válida.
-"""
-        )
-
-    with col2:
-
-        st.info(
-            """
-### 📊 Comparar Excel
-
-Compara la estructura entre el archivo Novasoft y el formato oficial de la DIAN.
-"""
-        )
-
-    st.write("")
-
-    st.success(
-        """
-### 📄 Generación de XML
-
-Convierte automáticamente el archivo de Excel en el XML requerido para la presentación ante la DIAN.
-"""
-    )
+    st.markdown("""
+    <div class="card">
+        <div class="icon">📄</div>
+        <h3>Generar XML</h3>
+        <p>
+        Convierte automáticamente los datos del Excel en el XML requerido por la DIAN,
+        realizando las validaciones necesarias antes de la generación.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
 
     st.write("")
     st.divider()
