@@ -35,6 +35,14 @@ def render_sidebar():
         st.divider()
 
         st.markdown("### 📂 Módulos")
+        if "modulo" not in st.session_state:
+            st.session_state.modulo = "Inicio"
+
+        if st.button(
+            "🏠 Inicio",
+            use_container_width=True,
+        ):
+            st.session_state.modulo = "Inicio"
 
         if "modulo" not in st.session_state:
             st.session_state.modulo = "Diagnóstico Preliminar de Formatos"

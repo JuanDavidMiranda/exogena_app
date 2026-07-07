@@ -32,7 +32,7 @@ from Ui.Pages.diagnostico_page import render_diagnostico_page
 from Ui.Pages.auditoria_page import render_auditoria_page
 from Ui.Pages.xml_page import render_xml_page
 from Service.auth_service import inicializar_sesion, usuario_autenticado
-
+from Ui.Pages.dashboard import render_dashboard
 # ==========================================
 # CONFIGURACIÓN DE LA APP
 # ==========================================
@@ -68,7 +68,10 @@ if not usuario_autenticado():
 render_hero()
 opcion = render_sidebar()
 
-if opcion == "Diagnóstico Preliminar de Formatos":
+if opcion == "Inicio":
+    render_dashboard()
+
+elif opcion == "Diagnóstico Preliminar de Formatos":
     render_diagnostico_page()
 
 elif opcion == "Comparar Excel Dian vs Novasoft":
