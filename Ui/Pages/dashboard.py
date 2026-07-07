@@ -123,6 +123,7 @@ with col2:
     ):
         st.session_state.modulo = "Generar XML para la DIAN"
     st.rerun()
+    
     st.write("")
     st.divider()
 
