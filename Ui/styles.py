@@ -26,13 +26,13 @@ def load_global_styles():
         z-index: 999 !important;
     }
 
-    /* Ocultamos solo la toolbar superior de Streamlit */
+    /* NO ocultar la toolbar de Streamlit */
     div[data-testid="stToolbar"] {
-        display: none !important;
+        visibility: visible !important;
+        display: flex !important;
     }
 
-    /* Forzar visibilidad del botón para abrir/cerrar sidebar
-    (Streamlit usa distintos testid según la versión) */
+    /* Forzar visibilidad del botón para abrir/cerrar sidebar */
     [data-testid="collapsedControl"],
     [data-testid="stSidebarCollapsedControl"] {
         display: flex !important;
@@ -49,14 +49,12 @@ def load_global_styles():
         padding: 0.20rem !important;
     }
 
-    /* Refuerzo adicional por si Streamlit renderiza el control como botón de header */
     button[kind="header"] {
         display: inline-flex !important;
         visibility: visible !important;
         opacity: 1 !important;
-        position: relative !important;
         z-index: 10001 !important;
-    }                    
+    }                 
 
     /* ===== Sidebar ===== */
     section[data-testid="stSidebar"] {
