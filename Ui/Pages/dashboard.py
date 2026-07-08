@@ -256,31 +256,96 @@ def render_dashboard():
     st.markdown("## ⚡ Accesos rápidos")
     st.caption("Ingresa directamente al módulo que necesitas utilizar.")
 
-    a1, a2, a3 = st.columns(3)
+    st.markdown("""
+    <style>
+    .quick-card {
+        background: #ffffff;
+        border: 1px solid #E5E7EB;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 3px 10px rgba(0,0,0,.06);
+        min-height: 190px;
+        margin-bottom: 10px;
+    }
 
-    with a1:
+    .quick-icon {
+        font-size: 32px;
+        margin-bottom: 8px;
+    }
+
+    .quick-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: #1E3A8A;
+        margin-bottom: 8px;
+    }
+
+    .quick-text {
+        font-size: 14px;
+        color: #475569;
+        line-height: 1.5;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    q1, q2, q3 = st.columns(3)
+
+    with q1:
+        st.markdown("""
+        <div class="quick-card">
+            <div class="quick-icon">🔍</div>
+            <div class="quick-title">Diagnóstico</div>
+            <div class="quick-text">
+                Revisa un Excel y detecta formatos DIAN, estructura mínima
+                y condiciones preliminares antes del procesamiento.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
         if st.button(
-            "🔍 Ir a Diagnóstico",
-            key="quick_diag",
+            "Abrir Diagnóstico",
+            key="quick_diag_card",
             use_container_width=True
         ):
             st.session_state.modulo = "Diagnóstico Preliminar de Formatos"
             st.rerun()
 
-    with a2:
-        if st.button(
-            "📊 Ir a Comparador",
-            key="quick_compare",
-            use_container_width=True
-        ):
-            st.session_state.modulo = "Comparar Excel Dian vs Novasoft"
-            st.rerun()
+    with q2:
+        st.markdown("""
+        <div class="quick-card">
+            <div class="quick-icon">📊</div>
+            <div class="quick-title">Comparador</div>
+            <div class="quick-text">
+                Compara el archivo Novasoft con la estructura esperada por la DIAN
+                para detectar diferencias y posibles inconsistencias.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-    with a3:
-        if st.button(
-            "📄 Ir a Generar XML",
-            key="quick_xml",
-            use_container_width=True
-        ):
-            st.session_state.modulo = "Generar XML para la DIAN"
-            st.rerun()
+    if st.button(
+        "Abrir Comparador",
+        key="quick_compare_card",
+        use_container_width=True
+    ):
+        st.session_state.modulo = "Comparar Excel Dian vs Novasoft"
+        st.rerun()
+
+    with q3:
+        st.markdown("""
+        <div class="quick-card">
+            <div class="quick-icon">📄</div>
+            <div class="quick-title">Generar XML</div>
+            <div class="quick-text">
+                Convierte la información cargada en el XML requerido para la DIAN
+                con validaciones previas antes de la exportación final.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    if st.button(
+        "Abrir Generador XML",
+        key="quick_xml_card",
+        use_container_width=True
+    ):
+        st.session_state.modulo = "Generar XML para la DIAN"
+        st.rerun()
