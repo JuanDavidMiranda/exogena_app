@@ -36,80 +36,72 @@ def render_sidebar():
 
         st.markdown("### 📂 Módulos")
 
+        # Estado inicial
         if "modulo" not in st.session_state:
             st.session_state.modulo = "Inicio"
 
-        modulo_actual = st.session_state.modulo
+        # Mapeo entre lo que ve el usuario y el valor real del módulo
+        opciones_modulos = {
+            "🏠 Inicio": "Inicio",
+            "🔍 Diagnóstico Preliminar": "Diagnóstico Preliminar de Formatos",
+            "📊 Comparar Excel": "Comparar Excel Dian vs Novasoft",
+            "📄 Generar XML": "Generar XML para la DIAN"
+        }
 
-        def render_modulo_card(label, icono, valor_modulo, button_key):
-            activo = modulo_actual == valor_modulo
+        # Encontrar cuál opción del radio corresponde al módulo actual
+        opcion_actual_label = "🏠 Inicio"
+        for label, valor in opciones_modulos.items():
+            if valor == st.session_state.modulo:
+                opcion_actual_label = label
+                break
 
-            fondo = "#DBEAFE" if activo else "#FFFFFF"
-            borde = "#2563EB" if activo else "#E5E7EB"
-            color_titulo = "#1D4ED8" if activo else "#334155"
-            sombra = (
-                "0 0 0 2px rgba(37,99,235,.15)"
-                if activo else
-                "0 2px 6px rgba(0,0,0,.05)"
-            )
+        labels = list(opciones_modulos.keys())
+        index_actual = labels.index(opcion_actual_label)
 
-            st.markdown(
-                f"""
-                <div style="
-                    background:{fondo};
-                    border:1px solid {borde};
-                    border-radius:14px;
-                    padding:12px 14px;
-                    margin-bottom:8px;
-                    box-shadow:{sombra};
-                ">
-                    <div style="
-                        font-size:15px;
-                        font-weight:700;
-                        color:{color_titulo};
-                    ">
-                        {icono} {label}
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+        # Estilos del selector
+        st.markdown("""
+        <style>
+        div[role="radiogroup"] > label {
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            padding: 10px 12px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            font-weight: 600;
+            color: #1E293B;
+            cursor: pointer;
+        }
 
-            if st.button(
-                f"Abrir {label}",
-                key=button_key,
-                use_container_width=True
-            ):
-                st.session_state.modulo = valor_modulo
-                st.rerun()
+        div[role="radiogroup"] > label:hover {
+            border-color: #93C5FD;
+            background: #EFF6FF;
+        }
 
-        render_modulo_card(
-            label="Inicio",
-            icono="🏠",
-            valor_modulo="Inicio",
-            button_key="sidebar_inicio"
+        div[role="radiogroup"] > label[data-checked="true"] {
+            background: #DBEAFE !important;
+            border: 1px solid #2563EB !important;
+            color: #1D4ED8 !important;
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+        }
+
+        div[role="radiogroup"] p {
+            font-size: 15px !important;
+            font-weight: 600 !important;
+            margin: 0 !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
+        seleccion = st.radio(
+            "Selecciona un módulo",
+            options=labels,
+            index=index_actual,
+            label_visibility="collapsed"
         )
 
-        render_modulo_card(
-            label="Diagnóstico Preliminar",
-            icono="🔍",
-            valor_modulo="Diagnóstico Preliminar de Formatos",
-            button_key="sidebar_diag"
-        )
-
-        render_modulo_card(
-            label="Comparar Excel",
-            icono="📊",
-            valor_modulo="Comparar Excel Dian vs Novasoft",
-            button_key="sidebar_compare"
-        )
-
-        render_modulo_card(
-            label="Generar XML",
-            icono="📄",
-            valor_modulo="Generar XML para la DIAN",
-            button_key="sidebar_xml"
-        )
+        st.session_state.modulo = opciones_modulos[seleccion]
 
         st.divider()
 
