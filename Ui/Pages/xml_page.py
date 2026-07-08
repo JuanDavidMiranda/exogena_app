@@ -24,30 +24,9 @@ def render_xml_page():
     )
 
     # ==========================
-    # Flujo visual
-    # ==========================
-    st.markdown("### Flujo de trabajo sugerido")
-    step_card(
-        "Paso 1 — Configuración del envío",
-        "Define el año gravable y el número de envío que se usarán en la construcción del XML."
-    )
-    step_card(
-        "Paso 2 — Selección del formato",
-        "Carga el archivo de Excel y selecciona la pestaña del formato a procesar."
-    )
-    step_card(
-        "Paso 3 — Diagnóstico previo",
-        "Revisa estructura, columnas detectadas, advertencias y errores antes de generar el XML."
-    )
-    step_card(
-        "Paso 4 — Generación final",
-        "Genera el XML oficial y descárgalo cuando el diagnóstico sea consistente."
-    )
-
-    # ==========================
     # Configuración del proceso
     # ==========================
-    st.markdown("### Configuración del proceso")
+    st.markdown("### ⚙️ Configuración del proceso")
     col1, col2, col3 = st.columns(3)
 
     with col1:
@@ -69,10 +48,12 @@ def render_xml_page():
     with col3:
         st.info("ℹ️ La versión XML se configura automáticamente según el formato.")
 
+    soft_divider()
+
     # ==========================
-    # Archivo de entrada
+    # Archivo y formato
     # ==========================
-    st.markdown("### Archivo y selección de formato")
+    st.markdown("### 📂 Archivo y selección de formato")
     archivo_excel = st.file_uploader(
         "Carga el archivo de Excel oficial (.xlsx)",
         type=["xlsx"],
@@ -101,21 +82,45 @@ def render_xml_page():
         formato_detectado = detectar_formato_desde_pestana(pestana_seleccionada)
 
         # ==========================
-        # KPIs de contexto
+        # Botones de acción (subidos para que se vean sin bajar tanto)
         # ==========================
+        st.write("")
+        col_btn1, col_btn2 = st.columns(2)
+
+        with col_btn1:
+            btn_diagnosticar = st.button(
+                "🩺 Diagnosticar hoja antes de generar XML",
+                width="stretch"
+            )
+
+        with col_btn2:
+            btn_generar = st.button(
+                "🚀 Generar XML",
+                width="stretch"
+            )
+
+        soft_divider()
+
+        # ==========================
+        # Resumen rápido del contexto
+        # ==========================
+        st.markdown("### 🧾 Resumen del formato seleccionado")
         c1, c2, c3 = st.columns(3)
+
         with c1:
             kpi_card(
                 "Pestaña seleccionada",
                 pestana_seleccionada,
                 "Hoja activa para el procesamiento"
             )
+
         with c2:
             kpi_card(
                 "Formato detectado",
                 formato_detectado if formato_detectado else "No detectado",
                 "Detectado desde el nombre de la pestaña"
             )
+
         with c3:
             kpi_card(
                 "Año / envío",
@@ -126,143 +131,176 @@ def render_xml_page():
         soft_divider()
 
         # ==========================
-        # Botones de acción
+        # Flujo sugerido (ahora colapsable para no empujar botones hacia abajo)
         # ==========================
-        col_btn1, col_btn2 = st.columns(2)
+        with st.expander("🧭 Ver flujo de trabajo sugerido", expanded=False):
+            step_card(
+                "Paso 1 — Configuración del envío",
+                "Define el año gravable y el número de envío que se usarán en la construcción del XML."
+            )
+            step_card(
+                "Paso 2 — Selección del formato",
+                "Carga el archivo de Excel y selecciona la pestaña del formato a procesar."
+            )
+            step_card(
+                "Paso 3 — Diagnóstico previo",
+                "Revisa estructura, columnas detectadas, advertencias y errores antes de generar el XML."
+            )
+            step_card(
+                "Paso 4 — Generación final",
+                "Genera el XML oficial y descárgalo cuando el diagnóstico sea consistente."
+            )
 
         # =====================================================
-        # BOTÓN: DIAGNOSTICAR HOJA
+        # ACCIÓN: DIAGNOSTICAR HOJA
         # =====================================================
-        with col_btn1:
-            if st.button("🩺 Diagnosticar hoja antes de generar XML"):
-                if not formato_detectado:
+        if btn_diagnosticar:
+            if not formato_detectado:
+                status_box(
+                    "No fue posible detectar el formato DIAN desde el nombre de la pestaña seleccionada.",
+                    kind="error"
+                )
+            else:
+                diagnostico = diagnosticar_formato_excel_service(
+                    archivo_excel=archivo_excel,
+                    pestana_seleccionada=pestana_seleccionada,
+                    formato_detectado=formato_detectado,
+                    vigencia=ano
+                )
+
+                st.markdown("## 🧪 Diagnóstico detallado del formato")
+
+                resumen = diagnostico["resumen"]
+                columnas_detectadas = diagnostico["columnas_detectadas"]
+                estructura = diagnostico["validacion_estructura"]
+                errores = diagnostico["errores"]
+                advertencias = diagnostico["advertencias"]
+                estado_general = diagnostico["estado_general"]
+
+                # ==========================
+                # KPIs del diagnóstico
+                # ==========================
+                c1, c2, c3 = st.columns(3)
+
+                with c1:
+                    kpi_card(
+                        "Registros detectados",
+                        resumen["total_registros"],
+                        "Filas útiles identificadas"
+                    )
+
+                with c2:
+                    kpi_card(
+                        "Columnas encontradas",
+                        resumen["columnas_encontradas"],
+                        "Encabezados leídos del archivo"
+                    )
+
+                with c3:
+                    kpi_card(
+                        "Filas TOTAL detectadas",
+                        resumen["filas_total_detectadas"],
+                        "Posibles filas de resumen"
+                    )
+
+                # ==========================
+                # Estado general
+                # ==========================
+                if estado_general == "OK":
                     status_box(
-                        "No fue posible detectar el formato DIAN desde el nombre de la pestaña seleccionada.",
-                        kind="error"
+                        "Diagnóstico sin observaciones críticas. El archivo parece listo para la generación del XML.",
+                        kind="ok"
+                    )
+                elif estado_general == "CON ADVERTENCIAS":
+                    status_box(
+                        "El archivo presenta advertencias. Se recomienda revisar antes de generar el XML.",
+                        kind="warning"
                     )
                 else:
-                    diagnostico = diagnosticar_formato_excel_service(
-                        archivo_excel=archivo_excel,
-                        pestana_seleccionada=pestana_seleccionada,
-                        formato_detectado=formato_detectado,
-                        vigencia=ano
+                    status_box(
+                        "El archivo presenta errores que deberían corregirse antes de generar el XML.",
+                        kind="error"
                     )
 
-                    st.markdown("## 🧪 Diagnóstico detallado del formato")
+                soft_divider()
 
-                    resumen = diagnostico["resumen"]
-                    columnas_detectadas = diagnostico["columnas_detectadas"]
-                    estructura = diagnostico["validacion_estructura"]
-                    errores = diagnostico["errores"]
-                    advertencias = diagnostico["advertencias"]
-                    estado_general = diagnostico["estado_general"]
+                # ==========================
+                # Mapeo de columnas detectadas
+                # ==========================
+                st.markdown("### 🧭 Mapeo de columnas detectadas")
 
-                    # ==========================
-                    # KPIs del diagnóstico
-                    # ==========================
-                    c1, c2, c3 = st.columns(3)
-                    with c1:
-                        kpi_card(
-                            "Registros detectados",
-                            resumen["total_registros"],
-                            "Filas útiles identificadas"
-                        )
-                    with c2:
-                        kpi_card(
-                            "Columnas encontradas",
-                            resumen["columnas_encontradas"],
-                            "Encabezados leídos del archivo"
-                        )
-                    with c3:
-                        kpi_card(
-                            "Filas TOTAL detectadas",
-                            resumen["filas_total_detectadas"],
-                            "Posibles filas de resumen"
-                        )
+                df_cols = pd.DataFrame(
+                    [
+                        {
+                            "Campo lógico": campo,
+                            "Columna detectada": columna if columna else "No detectada",
+                            "Estado": "OK" if columna else "Revisar"
+                        }
+                        for campo, columna in columnas_detectadas.items()
+                    ]
+                )
 
-                    # ==========================
-                    # Estado general
-                    # ==========================
-                    if estado_general == "OK":
-                        status_box(
-                            "Diagnóstico sin observaciones críticas. El archivo parece listo para la generación del XML.",
-                            kind="ok"
-                        )
-                    elif estado_general == "CON ADVERTENCIAS":
-                        status_box(
-                            "El archivo presenta advertencias. Se recomienda revisar antes de generar el XML.",
-                            kind="warning"
-                        )
+                st.dataframe(
+                    df_cols,
+                    width="stretch",
+                    hide_index=True
+                )
+
+                soft_divider()
+
+                # ==========================
+                # Validación de estructura mínima
+                # ==========================
+                st.markdown("### 🏗️ Validación de estructura mínima")
+                col_e1, col_e2 = st.columns(2)
+
+                with col_e1:
+                    st.markdown("**Columnas mínimas presentes**")
+                    if estructura["presentes"]:
+                        for item in estructura["presentes"]:
+                            st.write(f"• {item}")
                     else:
-                        status_box(
-                            "El archivo presenta errores que deberían corregirse antes de generar el XML.",
-                            kind="error"
-                        )
+                        st.write("• Ninguna")
 
-                    soft_divider()
+                with col_e2:
+                    st.markdown("**Columnas mínimas faltantes**")
+                    if estructura["faltantes"]:
+                        for item in estructura["faltantes"]:
+                            st.write(f"• {item}")
+                    else:
+                        st.write("• Ninguna")
 
-                    # ==========================
-                    # Mapeo de columnas detectadas
-                    # ==========================
-                    st.markdown("### 🧭 Mapeo de columnas detectadas")
-                    df_cols = pd.DataFrame(
-                        [
-                            {
-                                "Campo lógico": campo,
-                                "Columna detectada": columna if columna else "No detectada",
-                                "Estado": "OK" if columna else "Revisar"
-                            }
-                            for campo, columna in columnas_detectadas.items()
-                        ]
+                soft_divider()
+
+                # ==========================
+                # Errores y advertencias
+                # ==========================
+                if errores:
+                    st.markdown("### ❌ Errores detectados")
+                    for err in errores:
+                        st.error(err)
+
+                if advertencias:
+                    st.markdown("### ⚠️ Advertencias")
+                    for adv in advertencias:
+                        st.warning(adv)
+
+                if not errores and not advertencias:
+                    status_box(
+                        "No se detectaron errores ni advertencias relevantes para este formato.",
+                        kind="ok"
                     )
-                    st.dataframe(df_cols, use_container_width=True)
-
-                    soft_divider()
-
-                    # ==========================
-                    # Validación de estructura mínima
-                    # ==========================
-                    st.markdown("### 🏗️ Validación de estructura mínima")
-                    col_e1, col_e2 = st.columns(2)
-
-                    with col_e1:
-                        st.markdown("**Columnas mínimas presentes**")
-                        if estructura["presentes"]:
-                            st.write(estructura["presentes"])
-                        else:
-                            st.write(["Ninguna"])
-
-                    with col_e2:
-                        st.markdown("**Columnas mínimas faltantes**")
-                        if estructura["faltantes"]:
-                            st.write(estructura["faltantes"])
-                        else:
-                            st.write(["Ninguna"])
-
-                    # ==========================
-                    # Errores y advertencias
-                    # ==========================
-                    if errores:
-                        st.markdown("### ❌ Errores detectados")
-                        for err in errores:
-                            st.error(err)
-
-                    if advertencias:
-                        st.markdown("### ⚠️ Advertencias")
-                        for adv in advertencias:
-                            st.warning(adv)
-
-                    if not errores and not advertencias:
-                        status_box(
-                            "No se detectaron errores ni advertencias relevantes para este formato.",
-                            kind="ok"
-                        )
 
         # =====================================================
-        # BOTÓN: GENERAR XML
+        # ACCIÓN: GENERAR XML
         # =====================================================
-        with col_btn2:
-            if st.button("🚀 Generar XML"):
+        if btn_generar:
+            if not formato_detectado:
+                status_box(
+                    "No fue posible detectar el formato DIAN desde el nombre de la pestaña seleccionada.",
+                    kind="error"
+                )
+            else:
                 with st.spinner(f"Procesando la pestaña '{pestana_seleccionada}'..."):
                     resultado = generar_xml_service(
                         archivo_excel=archivo_excel,
@@ -271,37 +309,41 @@ def render_xml_page():
                         envio=envio
                     )
 
-                    status_box(
-                        f"XML del Formato {resultado['formato_detectado']} generado exitosamente.",
-                        kind="ok"
+                status_box(
+                    f"XML del Formato {resultado['formato_detectado']} generado exitosamente.",
+                    kind="ok"
+                )
+
+                c1, c2, c3 = st.columns(3)
+
+                with c1:
+                    kpi_card(
+                        "Formato generado",
+                        resultado["formato_detectado"],
+                        "Formato DIAN procesado"
                     )
 
-                    c1, c2, c3 = st.columns(3)
-                    with c1:
-                        kpi_card(
-                            "Formato generado",
-                            resultado["formato_detectado"],
-                            "Formato DIAN procesado"
-                        )
-                    with c2:
-                        kpi_card(
-                            "Terceros reportados",
-                            f"{resultado['total_registros']:,}",
-                            "Registros incluidos en el XML"
-                        )
-                    with c3:
-                        kpi_card(
-                            "Cuantía total",
-                            f"${resultado['total_cuantias']:,.0f}",
-                            "Suma total informada"
-                        )
-
-                    st.download_button(
-                        label="💾 Descargar archivo XML oficial",
-                        data=resultado["xml_bytes"],
-                        file_name=resultado["nombre_archivo"],
-                        mime="text/xml"
+                with c2:
+                    kpi_card(
+                        "Terceros reportados",
+                        f"{resultado['total_registros']:,}",
+                        "Registros incluidos en el XML"
                     )
+
+                with c3:
+                    kpi_card(
+                        "Cuantía total",
+                        f"${resultado['total_cuantias']:,.0f}",
+                        "Suma total informada"
+                    )
+
+                st.download_button(
+                    label="💾 Descargar archivo XML oficial",
+                    data=resultado["xml_bytes"],
+                    file_name=resultado["nombre_archivo"],
+                    mime="text/xml",
+                    width="stretch"
+                )
 
     except Exception as e:
         status_box(f"Error durante el procesamiento del XML: {e}", kind="error")
