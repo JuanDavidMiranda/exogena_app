@@ -17,9 +17,10 @@ def load_global_styles():
         max-width: 1200px;
     }
 
-    /* Quitar espacio extra del header de Streamlit */
+    /* Mantener visible el header para no perder el control del sidebar */
     header[data-testid="stHeader"] {
-        height: 0rem;
+        min-height: 3.2rem;
+        background: transparent;
     }
 
     div[data-testid="stToolbar"] {
