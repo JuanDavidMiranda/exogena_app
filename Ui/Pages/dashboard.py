@@ -251,3 +251,36 @@ def render_dashboard():
             <div class="kpi-sub">Configuración normativa activa</div>
         </div>
         """, unsafe_allow_html=True)
+    
+    st.write("")
+    st.markdown("## ⚡ Accesos rápidos")
+    st.caption("Ingresa directamente al módulo que necesitas utilizar.")
+
+    a1, a2, a3 = st.columns(3)
+
+    with a1:
+        if st.button(
+            "🔍 Ir a Diagnóstico",
+            key="quick_diag",
+            use_container_width=True
+        ):
+            st.session_state.modulo = "Diagnóstico Preliminar de Formatos"
+            st.rerun()
+
+    with a2:
+        if st.button(
+            "📊 Ir a Comparador",
+            key="quick_compare",
+            use_container_width=True
+        ):
+            st.session_state.modulo = "Comparar Excel Dian vs Novasoft"
+            st.rerun()
+
+    with a3:
+        if st.button(
+            "📄 Ir a Generar XML",
+            key="quick_xml",
+            use_container_width=True
+        ):
+            st.session_state.modulo = "Generar XML para la DIAN"
+            st.rerun()
