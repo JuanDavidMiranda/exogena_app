@@ -27,6 +27,16 @@ def load_global_styles():
         display: none;
     }
 
+    [data-testid="collapsedControl"] {
+        display: flex !important;
+        visibility: visible !important;
+    }
+
+    button[kind="header"] {
+        display: inline-flex !important;
+        visibility: visible !important;
+    }                    
+
     /* ===== Sidebar ===== */
     section[data-testid="stSidebar"] {
         background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
