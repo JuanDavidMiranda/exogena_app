@@ -171,24 +171,83 @@ def render_dashboard():
     st.write("")
     st.markdown("## 🧾 Resumen del sistema")
 
-    r1, r2 = st.columns(2)
+    st.markdown("""
+    <style>
+    .kpi-card {
+        background: #ffffff;
+        border: 1px solid #E5E7EB;
+        border-radius: 16px;
+        padding: 18px;
+        box-shadow: 0 3px 10px rgba(0,0,0,.06);
+        text-align: center;
+        min-height: 130px;
+    }
 
-    with r1:
-        st.info(
-        f"""
-        **👤 Usuario activo:** {nombre}  
-        **🛡️ Rol:** {rol}  
-        **📅 Vigencia base:** 2025  
-        **🧩 Módulos disponibles:** {cantidad_modulos}
-        """
-    )
+    .kpi-icon {
+        font-size: 28px;
+        margin-bottom: 6px;
+    }
 
-    with r2:
-        formatos_texto = ", ".join(formatos)
+    .kpi-value {
+        font-size: 28px;
+        font-weight: 700;
+        color: #1E3A8A;
+        margin-bottom: 6px;
+        word-break: break-word;
+    }
 
-    st.success(
-        f"""
-        **📂 Formatos soportados:** {cantidad_formatos}  
-        **🔢 Códigos disponibles:** {formatos_texto}
-        """
-    )
+    .kpi-label {
+        font-size: 14px;
+        color: #475569;
+        font-weight: 500;
+    }
+
+    .kpi-sub {
+        font-size: 12px;
+        color: #64748B;
+        margin-top: 6px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    k1, k2, k3, k4 = st.columns(4)
+
+    with k1:
+        st.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-icon">👤</div>
+            <div class="kpi-value">{nombre}</div>
+            <div class="kpi-label">Usuario activo</div>
+            <div class="kpi-sub">Rol: {rol}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with k2:
+        st.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-icon">📂</div>
+            <div class="kpi-value">{cantidad_formatos}</div>
+            <div class="kpi-label">Formatos soportados</div>
+            <div class="kpi-sub">Vigencia 2025</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with k3:
+        st.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-icon">🧩</div>
+            <div class="kpi-value">{cantidad_modulos}</div>
+            <div class="kpi-label">Módulos disponibles</div>
+            <div class="kpi-sub">Diagnóstico, Comparador y XML</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with k4:
+        st.markdown("""
+        <div class="kpi-card">
+            <div class="kpi-icon">📅</div>
+            <div class="kpi-value">2025</div>
+            <div class="kpi-label">Vigencia base</div>
+            <div class="kpi-sub">Configuración normativa activa</div>
+        </div>
+        """, unsafe_allow_html=True)
