@@ -1,13 +1,20 @@
 import streamlit as st
 from Service.auth_service import obtener_usuario_actual
-
+from Service.normative_service import obtener_formatos_soportados
 
 def render_dashboard():
     usuario = obtener_usuario_actual()
 
     nombre = "Usuario"
+    rol = "usuario"
+
     if usuario:
         nombre = usuario.get("nombre", "Usuario")
+        rol = usuario.get("rol", "usuario")
+
+    formatos = obtener_formatos_soportados(2025)
+    cantidad_formatos = len(formatos)
+    cantidad_modulos = 3
 
     # =========================
     # HERO / ENCABEZADO
@@ -159,4 +166,29 @@ def render_dashboard():
 
     st.caption(
         "Bienvenido a Exógena DIAN. Utiliza el menú lateral o las tarjetas de inicio para acceder a los módulos."
+    )
+
+    st.write("")
+    st.markdown("## 🧾 Resumen del sistema")
+
+    r1, r2 = st.columns(2)
+
+    with r1:
+        st.info(
+        f"""
+        **👤 Usuario activo:** {nombre}  
+        **🛡️ Rol:** {rol}  
+        **📅 Vigencia base:** 2025  
+        **🧩 Módulos disponibles:** {cantidad_modulos}
+        """
+    )
+
+    with r2:
+        formatos_texto = ", ".join(formatos)
+
+    st.success(
+        f"""
+        **📂 Formatos soportados:** {cantidad_formatos}  
+        **🔢 Códigos disponibles:** {formatos_texto}
+        """
     )
