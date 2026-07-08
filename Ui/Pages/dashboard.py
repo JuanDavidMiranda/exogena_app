@@ -284,3 +284,100 @@ def render_dashboard():
         ):
             st.session_state.modulo = "Generar XML para la DIAN"
             st.rerun()
+    
+    st.write("")
+    st.markdown("## 🚀 Flujo recomendado de trabajo")
+    st.caption("Sigue este orden para procesar correctamente la información exógena antes de generar el XML final.")
+
+    st.markdown("""
+    <style>
+    .flow-card {
+        background: #ffffff;
+        border: 1px solid #E5E7EB;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 3px 10px rgba(0,0,0,.06);
+        min-height: 200px;
+        text-align: center;
+    }
+
+    .flow-step {
+        font-size: 14px;
+        font-weight: 700;
+        color: #2563EB;
+        margin-bottom: 8px;
+    }
+
+    .flow-icon {
+        font-size: 34px;
+        margin-bottom: 10px;
+    }
+
+    .flow-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: #1E3A8A;
+        margin-bottom: 10px;
+    }
+
+    .flow-text {
+        font-size: 14px;
+        color: #475569;
+        line-height: 1.5;
+    }
+
+    .flow-arrow {
+        text-align: center;
+        font-size: 32px;
+        color: #94A3B8;
+        margin-top: 70px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    f1, flecha1, f2, flecha2, f3 = st.columns([3, 1, 3, 1, 3])
+
+    with f1:
+        st.markdown("""
+        <div class="flow-card">
+            <div class="flow-step">PASO 1</div>
+            <div class="flow-icon">🔍</div>
+            <div class="flow-title">Diagnóstico</div>
+            <div class="flow-text">
+                Carga el Excel y detecta los formatos DIAN presentes, validando la
+                estructura mínima y el estado preliminar del archivo.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with flecha1:
+        st.markdown('<div class="flow-arrow">➡️</div>', unsafe_allow_html=True)
+
+    with f2:
+        st.markdown("""
+        <div class="flow-card">
+            <div class="flow-step">PASO 2</div>
+            <div class="flow-icon">📊</div>
+            <div class="flow-title">Comparación</div>
+            <div class="flow-text">
+                Compara la estructura del archivo Novasoft frente a la estructura
+                esperada por la DIAN para identificar diferencias o inconsistencias.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with flecha2:
+        st.markdown('<div class="flow-arrow">➡️</div>', unsafe_allow_html=True)
+
+    with f3:
+        st.markdown("""
+        <div class="flow-card">
+            <div class="flow-step">PASO 3</div>
+            <div class="flow-icon">📄</div>
+            <div class="flow-title">Generación XML</div>
+            <div class="flow-text">
+                Una vez validada la información, genera el XML final con la estructura
+                requerida para la presentación ante la DIAN.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)

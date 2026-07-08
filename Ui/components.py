@@ -37,6 +37,22 @@ def render_sidebar():
         st.markdown("### 📂 Módulos")
         if "modulo" not in st.session_state:
             st.session_state.modulo = "Inicio"
+        
+        modulo_actual = st.session_state.modulo
+
+        st.markdown(f"""
+        <div style="
+            background: #EFF6FF;
+            border: 1px solid #BFDBFE;
+            color: #1D4ED8;
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            font-size: 14px;
+        ">
+            <strong>📍 Módulo actual:</strong><br>{modulo_actual}
+        </div>
+        """, unsafe_allow_html=True)
 
         if st.button(
             "🏠 Inicio",
