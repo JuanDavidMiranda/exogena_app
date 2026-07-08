@@ -309,40 +309,53 @@ def render_xml_page():
                         envio=envio
                     )
 
-                status_box(
-                    f"XML del Formato {resultado['formato_detectado']} generado exitosamente.",
-                    kind="ok"
+                st.session_state["xml_generado_resultado"] = resultado
+                # =====================================================
+        # RESULTADO DEL XML GENERADO (persistente y visible)
+        # =====================================================
+        if "xml_generado_resultado" in st.session_state:
+            resultado_xml = st.session_state["xml_generado_resultado"]
+
+            soft_divider()
+            st.markdown("## 📦 XML generado")
+
+            status_box(
+                f"XML del Formato {resultado_xml['formato_detectado']} generado exitosamente.",
+                kind="ok"
+            )
+
+            # Botón de descarga arriba, visible inmediatamente
+            st.download_button(
+                label="💾 Descargar archivo XML oficial",
+                data=resultado_xml["xml_bytes"],
+                file_name=resultado_xml["nombre_archivo"],
+                mime="text/xml",
+                width="stretch"
+            )
+
+            st.write("")
+
+            c1, c2, c3 = st.columns(3)
+
+            with c1:
+                kpi_card(
+                    "Formato generado",
+                    resultado_xml["formato_detectado"],
+                    "Formato DIAN procesado"
                 )
 
-                c1, c2, c3 = st.columns(3)
+            with c2:
+                kpi_card(
+                    "Terceros reportados",
+                    f"{resultado_xml['total_registros']:,}",
+                    "Registros incluidos en el XML"
+                )
 
-                with c1:
-                    kpi_card(
-                        "Formato generado",
-                        resultado["formato_detectado"],
-                        "Formato DIAN procesado"
-                    )
-
-                with c2:
-                    kpi_card(
-                        "Terceros reportados",
-                        f"{resultado['total_registros']:,}",
-                        "Registros incluidos en el XML"
-                    )
-
-                with c3:
-                    kpi_card(
-                        "Cuantía total",
-                        f"${resultado['total_cuantias']:,.0f}",
-                        "Suma total informada"
-                    )
-
-                st.download_button(
-                    label="💾 Descargar archivo XML oficial",
-                    data=resultado["xml_bytes"],
-                    file_name=resultado["nombre_archivo"],
-                    mime="text/xml",
-                    width="stretch"
+            with c3:
+                kpi_card(
+                    "Cuantía total",
+                    f"${resultado_xml['total_cuantias']:,.0f}",
+                    "Suma total informada"
                 )
 
     except Exception as e:
