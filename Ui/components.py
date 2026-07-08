@@ -35,48 +35,81 @@ def render_sidebar():
         st.divider()
 
         st.markdown("### 📂 Módulos")
+
         if "modulo" not in st.session_state:
             st.session_state.modulo = "Inicio"
-        
+
         modulo_actual = st.session_state.modulo
 
-        st.markdown(f"""
-        <div style="
-            background: #EFF6FF;
-            border: 1px solid #BFDBFE;
-            color: #1D4ED8;
-            padding: 12px;
-            border-radius: 12px;
-            margin-bottom: 12px;
-            font-size: 14px;
-        ">
-            <strong>📍 Módulo actual:</strong><br>{modulo_actual}
-        </div>
-        """, unsafe_allow_html=True)
+        def render_modulo_card(label, icono, valor_modulo, button_key):
+            activo = modulo_actual == valor_modulo
 
-        if st.button(
-            "🏠 Inicio",
-            use_container_width=True,
-        ):
-            st.session_state.modulo = "Inicio"
+            fondo = "#DBEAFE" if activo else "#FFFFFF"
+            borde = "#2563EB" if activo else "#E5E7EB"
+            color_titulo = "#1D4ED8" if activo else "#334155"
+            sombra = (
+                "0 0 0 2px rgba(37,99,235,.15)"
+                if activo else
+                "0 2px 6px rgba(0,0,0,.05)"
+            )
 
-        if st.button(
-            "🔍 Diagnóstico Preliminar",
-            use_container_width=True,
-        ):
-            st.session_state.modulo = "Diagnóstico Preliminar de Formatos"
+            st.markdown(
+                f"""
+                <div style="
+                    background:{fondo};
+                    border:1px solid {borde};
+                    border-radius:14px;
+                    padding:12px 14px;
+                    margin-bottom:8px;
+                    box-shadow:{sombra};
+                ">
+                    <div style="
+                        font-size:15px;
+                        font-weight:700;
+                        color:{color_titulo};
+                    ">
+                        {icono} {label}
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 
-        if st.button(
-            "📊 Comparar Excel",
-            use_container_width=True,
-        ):
-            st.session_state.modulo = "Comparar Excel Dian vs Novasoft"
+            if st.button(
+                f"Abrir {label}",
+                key=button_key,
+                use_container_width=True
+            ):
+                st.session_state.modulo = valor_modulo
+                st.rerun()
 
-        if st.button(
-            "📄 Generar XML",
-            use_container_width=True,
-        ):
-            st.session_state.modulo = "Generar XML para la DIAN"
+        render_modulo_card(
+            label="Inicio",
+            icono="🏠",
+            valor_modulo="Inicio",
+            button_key="sidebar_inicio"
+        )
+
+        render_modulo_card(
+            label="Diagnóstico Preliminar",
+            icono="🔍",
+            valor_modulo="Diagnóstico Preliminar de Formatos",
+            button_key="sidebar_diag"
+        )
+
+        render_modulo_card(
+            label="Comparar Excel",
+            icono="📊",
+            valor_modulo="Comparar Excel Dian vs Novasoft",
+            button_key="sidebar_compare"
+        )
+
+        render_modulo_card(
+            label="Generar XML",
+            icono="📄",
+            valor_modulo="Generar XML para la DIAN",
+            button_key="sidebar_xml"
+        )
 
         st.divider()
 
