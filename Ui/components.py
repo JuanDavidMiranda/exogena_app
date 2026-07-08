@@ -44,9 +44,6 @@ def render_sidebar():
         ):
             st.session_state.modulo = "Inicio"
 
-        if "modulo" not in st.session_state:
-            st.session_state.modulo = "Diagnóstico Preliminar de Formatos"
-
         if st.button(
             "🔍 Diagnóstico Preliminar",
             use_container_width=True,

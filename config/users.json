@@ -1,0 +1,8 @@
+{
+    "prueba": {
+        "nombre": "prueba",
+        "username": "prueba",
+        "password_hash": "pbkdf2_sha256$100000$5G5thBA0aCgEqkyoF54Qbw==$gElA7NFlHXjQudzhuOT3vE3olAkAL7OpWoJbYMHATCk=",
+        "rol": "usuario"
+    }
+}

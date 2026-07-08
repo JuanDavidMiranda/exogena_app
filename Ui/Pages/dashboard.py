@@ -1,5 +1,4 @@
 import streamlit as st
-
 from Service.auth_service import obtener_usuario_actual
 
 
@@ -10,13 +9,17 @@ def render_dashboard():
     if usuario:
         nombre = usuario.get("nombre", "Usuario")
 
+    # =========================
+    # HERO / ENCABEZADO
+    # =========================
     st.markdown("""
     <div style="
         background: linear-gradient(90deg,#0f62fe,#2563eb);
         padding:30px;
-        border-radius:15px;
+        border-radius:18px;
         color:white;
         margin-bottom:25px;
+        box-shadow:0 6px 18px rgba(0,0,0,.12);
     ">
         <h1 style="margin:0;">📊 EXÓGENA DIAN</h1>
         <p style="font-size:18px;margin-top:8px;">
@@ -29,150 +32,131 @@ def render_dashboard():
     """, unsafe_allow_html=True)
 
     st.markdown(f"# ¡Bienvenido, {nombre}! 👋")
+    st.write("Selecciona uno de los módulos para comenzar a trabajar.")
 
-    st.write(
-        """
-Selecciona uno de los módulos desde el menú lateral para comenzar a trabajar.
-"""
-    )
-
+    # =========================
+    # ESTILOS DE TARJETAS
+    # =========================
     st.markdown("""
-<style>
+    <style>
+    .card {
+        background-color: #ffffff;
+        border-radius: 18px;
+        padding: 24px;
+        border: 1px solid #E5E7EB;
+        box-shadow: 0 4px 12px rgba(0,0,0,.08);
+        min-height: 220px;
+        margin-bottom: 10px;
+    }
 
-.card{
-    background-color:#ffffff;
-    border-radius:15px;
-    padding:25px;
-    border:1px solid #E5E7EB;
-    box-shadow:0 3px 10px rgba(0,0,0,.08);
-    height:220px;
-    margin-bottom:10px;
-}
+    .card-icon {
+        font-size: 38px;
+        margin-bottom: 8px;
+    }
 
-.card h3{
-    margin-top:10px;
-    color:#2563eb;
-}
+    .card-title {
+        font-size: 22px;
+        font-weight: 700;
+        color: #1E3A8A;
+        margin-bottom: 10px;
+    }
 
-.card p{
-    color:#555555;
-    line-height:1.6;
-}
+    .card-text {
+        color: #475569;
+        line-height: 1.6;
+        font-size: 15px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
-.icon{
-    font-size:40px;
-}
+    # =========================
+    # TARJETAS SUPERIORES
+    # =========================
+    col1, col2 = st.columns(2)
 
-</style>
-""", unsafe_allow_html=True)
+    with col1:
+        st.markdown("""
+        <div class="card">
+            <div class="card-icon">🔍</div>
+            <div class="card-title">Diagnóstico Preliminar</div>
+            <div class="card-text">
+                Analiza el archivo Excel para detectar automáticamente los formatos
+                DIAN presentes y validar la estructura antes del procesamiento.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-col1, col2 = st.columns(2)
+        if st.button(
+            "🔍 Abrir Diagnóstico",
+            key="dashboard_diag",
+            use_container_width=True
+        ):
+            st.session_state.modulo = "Diagnóstico Preliminar de Formatos"
+            st.rerun()
 
-# ===========================
-# TARJETA DIAGNÓSTICO
-# ===========================
-with col1:
+    with col2:
+        st.markdown("""
+        <div class="card">
+            <div class="card-icon">📊</div>
+            <div class="card-title">Comparar Excel</div>
+            <div class="card-text">
+                Compara la estructura del archivo Novasoft con el formato oficial
+                de la DIAN para identificar diferencias e inconsistencias.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        if st.button(
+            "📊 Abrir Comparador",
+            key="dashboard_compare",
+            use_container_width=True
+        ):
+            st.session_state.modulo = "Comparar Excel Dian vs Novasoft"
+            st.rerun()
+
+    # =========================
+    # TARJETA INFERIOR
+    # =========================
+    st.write("")
 
     st.markdown("""
     <div class="card">
-        <div class="icon">🔍</div>
-        <h3>Diagnóstico Preliminar</h3>
-        <p>
-        Analiza el archivo Excel para detectar automáticamente los formatos DIAN
-        presentes y verificar su estructura antes del procesamiento.
-        </p>
+        <div class="card-icon">📄</div>
+        <div class="card-title">Generar XML</div>
+        <div class="card-text">
+            Convierte automáticamente los datos del Excel en el XML requerido por
+            la DIAN, realizando las validaciones necesarias antes de la generación.
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
     if st.button(
-        "🔍 Abrir Diagnóstico",
-        key="dashboard_diag",
+        "📄 Generar XML",
+        key="dashboard_xml",
         use_container_width=True
     ):
-        st.session_state.modulo = "Diagnóstico Preliminar de Formatos"
+        st.session_state.modulo = "Generar XML para la DIAN"
         st.rerun()
 
+    # =========================
+    # MÉTRICAS
+    # =========================
+    st.write("")
+    st.divider()
 
-# ===========================
-# TARJETA COMPARAR
-# ===========================
-with col2:
+    m1, m2, m3 = st.columns(3)
 
-    st.markdown("""
-    <div class="card">
-        <div class="icon">📊</div>
-        <h3>Comparar Excel</h3>
-        <p>
-        Compara la estructura del archivo Novasoft con la plantilla oficial de la
-        DIAN para identificar diferencias y posibles inconsistencias.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+    with m1:
+        st.metric("Versión", "1.0")
 
-    if st.button(
-        "📊 Abrir Comparador",
-        key="dashboard_compare",
-        use_container_width=True
-    ):
-        st.session_state.modulo = "Comparar Excel Dian vs Novasoft"
-        st.rerun()
+    with m2:
+        st.metric("Vigencia", "2025")
 
+    with m3:
+        st.metric("Estado", "Operativo ✅")
 
-# ===========================
-# TARJETA XML
-# ===========================
+    st.divider()
 
-st.write("")
-
-st.markdown("""
-<div class="card">
-    <div class="icon">📄</div>
-    <h3>Generar XML</h3>
-    <p>
-    Convierte automáticamente los datos del Excel en el XML requerido por la DIAN,
-    realizando las validaciones necesarias antes de la generación.
-    </p>
-</div>
-""", unsafe_allow_html=True)
-
-if st.button(
-    "📄 Generar XML",
-    key="dashboard_xml",
-    use_container_width=True
-):
-    st.session_state.modulo = "Generar XML para la DIAN"
-    st.rerun()
-
-
-# ===========================
-# MÉTRICAS
-# ===========================
-
-st.write("")
-st.divider()
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.metric(
-        "Versión",
-        "1.0"
+    st.caption(
+        "Bienvenido a Exógena DIAN. Utiliza el menú lateral o las tarjetas de inicio para acceder a los módulos."
     )
-
-with col2:
-    st.metric(
-        "Vigencia",
-        "2025"
-    )
-
-with col3:
-    st.metric(
-        "Estado",
-        "Operativo ✅"
-    )
-
-st.divider()
-
-st.caption(
-    "Bienvenido a Exógena DIAN. Utiliza el menú lateral para acceder a cada uno de los módulos disponibles."
-)
