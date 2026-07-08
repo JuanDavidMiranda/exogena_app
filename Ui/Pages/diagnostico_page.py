@@ -139,17 +139,45 @@ def render_diagnostico_page():
         # ==========================
         # Resultado detallado
         # ==========================
+
         st.markdown("### 📑 Resultado detallado del análisis")
 
         df_resultados = pd.DataFrame(resultado["resultados"])
 
+        # ==========================
+        # Crear columna visual de estado
+        # ==========================
+        def construir_estado(fila):
+            terceros = fila.get("Terceros Detectados", 0)
+            dictamen = str(fila.get("Dictamen", "")).lower()
+
+            if terceros > 0 or "🟢" in str(fila.get("Dictamen", "")):
+                return "🟢 Con información"
+            elif "error" in dictamen:
+                return "🔴 Revisar"
+            else:
+                return "🟡 Sin información útil"
+
+        df_resultados["Estado"] = df_resultados.apply(construir_estado, axis=1)
+
+        # Reordenar columnas para que Estado quede visible al inicio
+        columnas_ordenadas = ["Estado"] + [
+            col for col in df_resultados.columns if col != "Estado"
+        ]
+        df_resultados = df_resultados[columnas_ordenadas]
+
+        # Ordenar por registros detectados si existe la columna
         if "Terceros Detectados" in df_resultados.columns:
             df_resultados = df_resultados.sort_values(
                 by="Terceros Detectados",
                 ascending=False
             )
 
-        st.dataframe(df_resultados, use_container_width=True)
+        st.dataframe(
+            df_resultados,
+            use_container_width=True,
+            hide_index=True
+        )
 
         soft_divider()
 
