@@ -36,72 +36,36 @@ def render_sidebar():
 
         st.markdown("### 📂 Módulos")
 
-        # Estado inicial
         if "modulo" not in st.session_state:
             st.session_state.modulo = "Inicio"
 
-        # Mapeo entre lo que ve el usuario y el valor real del módulo
-        opciones_modulos = {
-            "🏠 Inicio": "Inicio",
-            "🔍 Diagnóstico Preliminar": "Diagnóstico Preliminar de Formatos",
-            "📊 Comparar Excel": "Comparar Excel Dian vs Novasoft",
-            "📄 Generar XML": "Generar XML para la DIAN"
-        }
+        if st.button(
+            "🏠 Inicio",
+            use_container_width=True,
+        ):
+            st.session_state.modulo = "Inicio"
+            st.rerun()
 
-        # Encontrar cuál opción del radio corresponde al módulo actual
-        opcion_actual_label = "🏠 Inicio"
-        for label, valor in opciones_modulos.items():
-            if valor == st.session_state.modulo:
-                opcion_actual_label = label
-                break
+        if st.button(
+            "🔍 Diagnóstico Preliminar",
+            use_container_width=True,
+        ):
+            st.session_state.modulo = "Diagnóstico Preliminar de Formatos"
+            st.rerun()
 
-        labels = list(opciones_modulos.keys())
-        index_actual = labels.index(opcion_actual_label)
+        if st.button(
+            "📊 Comparar Excel",
+            use_container_width=True,
+        ):
+            st.session_state.modulo = "Comparar Excel Dian vs Novasoft"
+            st.rerun()
 
-        # Estilos del selector
-        st.markdown("""
-        <style>
-        div[role="radiogroup"] > label {
-            background: #F8FAFC;
-            border: 1px solid #E2E8F0;
-            padding: 10px 12px;
-            border-radius: 12px;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            font-weight: 600;
-            color: #1E293B;
-            cursor: pointer;
-        }
-
-        div[role="radiogroup"] > label:hover {
-            border-color: #93C5FD;
-            background: #EFF6FF;
-        }
-
-        div[role="radiogroup"] > label[data-checked="true"] {
-            background: #DBEAFE !important;
-            border: 1px solid #2563EB !important;
-            color: #1D4ED8 !important;
-            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
-        }
-
-        div[role="radiogroup"] p {
-            font-size: 15px !important;
-            font-weight: 600 !important;
-            margin: 0 !important;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-
-        seleccion = st.radio(
-            "Selecciona un módulo",
-            options=labels,
-            index=index_actual,
-            label_visibility="collapsed"
-        )
-
-        st.session_state.modulo = opciones_modulos[seleccion]
+        if st.button(
+            "📄 Generar XML",
+            use_container_width=True,
+        ):
+            st.session_state.modulo = "Generar XML para la DIAN"
+            st.rerun()
 
         st.divider()
 
