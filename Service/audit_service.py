@@ -1,5 +1,4 @@
 import pandas as pd
-import streamlit as st
 
 from Utils.excel_reader import leer_excel_seguro
 
@@ -40,7 +39,6 @@ MONTOS_NOVASOFT = [
     "mon_ret",
     "mon_cre"
 ]
-
 
 # ----------------------------
 # DIAN / compras / facturación
@@ -86,16 +84,10 @@ MONTOS_DIAN = [
 # ============================================================
 
 def normalizar_texto(texto):
-    """
-    Normaliza un texto para facilitar comparación de columnas.
-    """
     return str(texto).strip().lower()
 
 
 def normalizar_columnas(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Limpia nombres de columnas sin perder el nombre visible original.
-    """
     df = df.copy()
     df.columns = [str(col).strip() for col in df.columns]
     return df
@@ -112,13 +104,13 @@ def buscar_columna_prioritaria(df: pd.DataFrame, candidatos: list[str]):
         normalizar_texto(col): col for col in columnas_originales
     }
 
-    # 1. match exacto por prioridad
+    # 1. Match exacto por prioridad
     for candidato in candidatos:
         candidato_norm = normalizar_texto(candidato)
         if candidato_norm in columnas_normalizadas:
             return columnas_normalizadas[candidato_norm]
 
-    # 2. match parcial por prioridad
+    # 2. Match parcial por prioridad
     for candidato in candidatos:
         candidato_norm = normalizar_texto(candidato)
         for col in columnas_originales:
@@ -132,7 +124,6 @@ def buscar_columna_prioritaria(df: pd.DataFrame, candidatos: list[str]):
 def leer_archivo_tabular(archivo):
     """
     Lee un archivo Excel/CSV de forma segura.
-    Usa tu lector robusto para soportar xls/xlsx/csv.
     """
     nombre = getattr(archivo, "name", "").lower()
 
@@ -149,7 +140,6 @@ def leer_archivo_tabular(archivo):
 def limpiar_clave(valor):
     """
     Limpia la clave de conciliación.
-    Convierte NaN a vacío, quita espacios y homogeneiza.
     """
     if pd.isna(valor):
         return ""
@@ -163,7 +153,6 @@ def convertir_monto_a_numero(serie: pd.Series) -> pd.Series:
     if pd.api.types.is_numeric_dtype(serie):
         return serie.fillna(0)
 
-    # Limpieza básica de símbolos / separadores
     serie = (
         serie.astype(str)
         .str.replace(",", "", regex=False)
@@ -184,7 +173,6 @@ def preparar_df_para_auditoria(df: pd.DataFrame, origen: str) -> pd.DataFrame:
     - detecta columna clave
     - detecta columna monto
     - crea __clave__ y __monto__
-    - devuelve columnas originales + columnas técnicas
     """
     df = normalizar_columnas(df)
 
@@ -236,6 +224,29 @@ def consolidar_por_clave(df: pd.DataFrame, nombre_origen: str) -> pd.DataFrame:
     return consolidado
 
 
+def construir_observacion(row) -> str:
+    """
+    Etiqueta funcional para entender el resultado de la conciliación.
+    """
+    valor_dian = float(row.get("valor_dian", 0) or 0)
+    valor_novasoft = float(row.get("valor_novasoft", 0) or 0)
+    diferencia = float(row.get("diferencia", 0) or 0)
+
+    if valor_dian > 0 and valor_novasoft == 0:
+        return "Solo en DIAN"
+
+    if valor_novasoft > 0 and valor_dian == 0:
+        return "Solo en Novasoft"
+
+    if abs(diferencia) < 0.01:
+        return "Conciliado"
+
+    if diferencia > 0:
+        return "Monto DIAN mayor"
+
+    return "Monto Novasoft mayor"
+
+
 # ============================================================
 # SERVICIO PRINCIPAL DE CONCILIACIÓN
 # ============================================================
@@ -244,18 +255,21 @@ def ejecutar_auditoria_service(archivo_dian, archivo_novasoft):
     """
     Realiza conciliación de compras entre archivo DIAN y archivo Novasoft.
 
-    Retorna un dict con:
+    Retorna:
     - resumen general
     - detalle consolidado por tercero
-    - totales
+    - dif_montos
+    - solo_dian
+    - solo_novasoft
+    - conciliados_df
     """
     try:
         if archivo_dian is None or archivo_novasoft is None:
             raise ValueError("Debes cargar ambos archivos: DIAN y Novasoft.")
 
-        # ----------------------------------------------------
+        # ====================================================
         # 1) Leer archivos
-        # ----------------------------------------------------
+        # ====================================================
         df_dian_raw = leer_archivo_tabular(archivo_dian)
         df_novasoft_raw = leer_archivo_tabular(archivo_novasoft)
 
@@ -265,21 +279,21 @@ def ejecutar_auditoria_service(archivo_dian, archivo_novasoft):
         if df_novasoft_raw is None or df_novasoft_raw.empty:
             raise ValueError("El archivo Novasoft no contiene información válida.")
 
-        # ----------------------------------------------------
+        # ====================================================
         # 2) Preparar dataframes
-        # ----------------------------------------------------
+        # ====================================================
         df_dian = preparar_df_para_auditoria(df_dian_raw, "DIAN")
         df_novasoft = preparar_df_para_auditoria(df_novasoft_raw, "Novasoft")
 
-        # ----------------------------------------------------
-        # 3) Consolidar por tercero / clave
-        # ----------------------------------------------------
+        # ====================================================
+        # 3) Consolidar por clave
+        # ====================================================
         dian_cons = consolidar_por_clave(df_dian, "dian")
         novasoft_cons = consolidar_por_clave(df_novasoft, "novasoft")
 
-        # ----------------------------------------------------
+        # ====================================================
         # 4) Cruce consolidado
-        # ----------------------------------------------------
+        # ====================================================
         comparativo = pd.merge(
             dian_cons,
             novasoft_cons,
@@ -287,25 +301,57 @@ def ejecutar_auditoria_service(archivo_dian, archivo_novasoft):
             how="outer"
         ).fillna(0)
 
+        comparativo["valor_dian"] = pd.to_numeric(
+            comparativo["valor_dian"], errors="coerce"
+        ).fillna(0)
+
+        comparativo["valor_novasoft"] = pd.to_numeric(
+            comparativo["valor_novasoft"], errors="coerce"
+        ).fillna(0)
+
         comparativo["diferencia"] = (
             comparativo["valor_dian"] - comparativo["valor_novasoft"]
         ).round(2)
 
-        # estado
-        comparativo["estado"] = comparativo["diferencia"].apply(
-            lambda x: "Conciliado" if abs(x) < 0.01 else "Diferencia"
+        comparativo["observacion"] = comparativo.apply(construir_observacion, axis=1)
+
+        comparativo["estado"] = comparativo["observacion"].apply(
+            lambda obs: "Conciliado" if obs == "Conciliado" else "Diferencia"
         )
 
-        # ordenar por mayor diferencia
+        # Ordenar por mayor diferencia
         comparativo = comparativo.sort_values(
             by="diferencia",
             key=lambda s: s.abs(),
             ascending=False
         ).reset_index(drop=True)
 
-        # ----------------------------------------------------
-        # 5) KPIs / resumen
-        # ----------------------------------------------------
+        # ====================================================
+        # 5) Subconjuntos funcionales
+        # ====================================================
+        solo_dian = comparativo[
+            (comparativo["valor_dian"] > 0) &
+            (comparativo["valor_novasoft"] == 0)
+        ].copy()
+
+        solo_novasoft = comparativo[
+            (comparativo["valor_novasoft"] > 0) &
+            (comparativo["valor_dian"] == 0)
+        ].copy()
+
+        dif_montos = comparativo[
+            (comparativo["valor_dian"] > 0) &
+            (comparativo["valor_novasoft"] > 0) &
+            (comparativo["diferencia"].abs() >= 0.01)
+        ].copy()
+
+        conciliados_df = comparativo[
+            comparativo["diferencia"].abs() < 0.01
+        ].copy()
+
+        # ====================================================
+        # 6) KPIs / resumen
+        # ====================================================
         total_dian = round(comparativo["valor_dian"].sum(), 2)
         total_novasoft = round(comparativo["valor_novasoft"].sum(), 2)
         diferencia_total = round(total_dian - total_novasoft, 2)
@@ -319,26 +365,58 @@ def ejecutar_auditoria_service(archivo_dian, archivo_novasoft):
         conciliados = int((comparativo["estado"] == "Conciliado").sum())
         con_diferencia = int((comparativo["estado"] == "Diferencia").sum())
 
-        # ----------------------------------------------------
-        # 6) DataFrame de salida bonito
-        # ----------------------------------------------------
+        # ====================================================
+        # 7) DataFrames bonitos de salida
+        # ====================================================
         detalle = comparativo.rename(columns={
             "__clave__": "Tercero / NIT",
             "valor_dian": "Valor DIAN",
             "valor_novasoft": "Valor Novasoft",
             "diferencia": "Diferencia",
-            "estado": "Estado"
-        })
+            "estado": "Estado",
+            "observacion": "Observación"
+        }).copy()
 
-        # formato visual del estado
         detalle["Estado"] = detalle["Estado"].replace({
             "Conciliado": "🟢 Conciliado",
             "Diferencia": "🟠 Diferencia"
         })
 
-        # ----------------------------------------------------
-        # 7) Respuesta del service
-        # ----------------------------------------------------
+        def formatear_subtabla(df_sub: pd.DataFrame) -> pd.DataFrame:
+            if df_sub.empty:
+                return pd.DataFrame(columns=[
+                    "Tercero / NIT",
+                    "Valor DIAN",
+                    "Valor Novasoft",
+                    "Diferencia",
+                    "Observación"
+                ])
+
+            out = df_sub.rename(columns={
+                "__clave__": "Tercero / NIT",
+                "valor_dian": "Valor DIAN",
+                "valor_novasoft": "Valor Novasoft",
+                "diferencia": "Diferencia",
+                "observacion": "Observación"
+            }).copy()
+
+            columnas = [
+                "Tercero / NIT",
+                "Valor DIAN",
+                "Valor Novasoft",
+                "Diferencia",
+                "Observación"
+            ]
+            return out[columnas]
+
+        solo_dian_out = formatear_subtabla(solo_dian)
+        solo_novasoft_out = formatear_subtabla(solo_novasoft)
+        dif_montos_out = formatear_subtabla(dif_montos)
+        conciliados_out = formatear_subtabla(conciliados_df)
+
+        # ====================================================
+        # 8) Respuesta del service
+        # ====================================================
         return {
             "ok": True,
             "mensaje": "Conciliación procesada correctamente.",
@@ -352,9 +430,16 @@ def ejecutar_auditoria_service(archivo_dian, archivo_novasoft):
                 "registros_novasoft": registros_novasoft,
                 "conciliados": conciliados,
                 "con_diferencia": con_diferencia,
+                "solo_dian": len(solo_dian_out),
+                "solo_novasoft": len(solo_novasoft_out),
+                "dif_montos": len(dif_montos_out),
             },
             "detalle": detalle,
             "detalle_raw": comparativo,
+            "solo_dian": solo_dian_out,
+            "solo_novasoft": solo_novasoft_out,
+            "dif_montos": dif_montos_out,
+            "conciliados_df": conciliados_out,
         }
 
     except Exception as e:
