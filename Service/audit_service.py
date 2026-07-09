@@ -3,50 +3,30 @@ import pandas as pd
 from Utils.excel_reader import leer_excel_seguro
 
 
-COLUMNAS_CLAVE_POSIBLES = [
-    "concepto",
-    "cuenta",
-    "codigo cuenta",
-    "código cuenta",
-    "cuenta contable",
+CLAVES_NOVASOFT = [
+    "provee",
     "nit",
     "nit tercero",
     "nit proveedor",
-    "documento",
-    "numero documento",
-    "número documento",
-    "identificacion",
-    "identificación",
-    "tercero",
-    "nombre tercero",
     "proveedor",
-    "provee",
-    "cod provee",
-    "codigo proveedor",
-    "código proveedor",
-    "razon social",
-    "razón social",
-    "razon social tercero",
-    "razón social tercero"
+    "tercero",
+    "documento",
+    "identificacion",
+    "identificación"
 ]
 
-COLUMNAS_MONTO_POSIBLES = [
+MONTOS_NOVASOFT = [
+    "ven_net",
     "valor",
     "valor total",
     "monto",
-    "cuantia",
-    "cuantía",
+    "cos_tot",
     "saldo",
-    "saldo final",
     "base",
     "debito",
     "débito",
     "credito",
-    "crédito",
-    "pago o abono",
-    "pago o abono en cuenta",
-    "retencion",
-    "retención"
+    "crédito"
 ]
 
 
@@ -72,40 +52,35 @@ def leer_archivo_tabular(archivo):
 
     return leer_excel_seguro(archivo)
 
-
-def encontrar_columna(df: pd.DataFrame, candidatos: list[str]):
-    """
-    Busca una columna por coincidencia exacta o parcial.
-    Primero intenta match exacto.
-    Si no encuentra, busca si el candidato está contenido en el nombre de la columna.
-    """
+def buscar_columna_prioritaria(df: pd.DataFrame, candidatos: list[str]):
     columnas_originales = list(df.columns)
     columnas_normalizadas = {
         normalizar_texto(col): col for col in columnas_originales
     }
 
-    # 1) Coincidencia exacta
+    # 1. Match exacto por prioridad
     for candidato in candidatos:
         candidato_norm = normalizar_texto(candidato)
         if candidato_norm in columnas_normalizadas:
             return columnas_normalizadas[candidato_norm]
 
-    # 2) Coincidencia parcial: "nit" dentro de "nit tercero", etc.
-    for col in columnas_originales:
-        col_norm = normalizar_texto(col)
-        for candidato in candidatos:
-            candidato_norm = normalizar_texto(candidato)
+    # 2. Match parcial por prioridad
+    for candidato in candidatos:
+        candidato_norm = normalizar_texto(candidato)
+        for col in columnas_originales:
+            col_norm = normalizar_texto(col)
             if candidato_norm in col_norm:
                 return col
 
     return None
 
 
+
 def preparar_df_para_auditoria(df: pd.DataFrame, origen: str) -> pd.DataFrame:
     df = normalizar_columnas(df)
 
-    col_clave = encontrar_columna(df, COLUMNAS_CLAVE_POSIBLES)
-    col_monto = encontrar_columna(df, COLUMNAS_MONTO_POSIBLES)
+    col_clave = buscar_columna_prioritaria(df, CLAVES_NOVASOFT)
+    col_monto = buscar_columna_prioritaria(df, MONTOS_NOVASOFT)
 
     if not col_clave:
         raise ValueError(
