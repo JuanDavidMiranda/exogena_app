@@ -56,7 +56,7 @@ def render_xml_page():
     st.markdown("### 📂 Archivo y selección de formato")
     archivo_excel = st.file_uploader(
         "Carga el archivo de Excel oficial (.xlsx)",
-        type=["xlsx"],
+        type=["xlsx", "xls"],
         key="xml_file"
     )
 

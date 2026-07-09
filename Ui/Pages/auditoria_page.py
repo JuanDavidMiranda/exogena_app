@@ -25,7 +25,7 @@ def render_auditoria_page():
     with col2:
         archivo_dian = st.file_uploader(
             "Sube el borrador del formato DIAN",
-            type=["xlsx", "csv"],
+            type=["xlsx", "csv", "xls"],
             key="dian_file"
         )
 

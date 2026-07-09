@@ -22,7 +22,7 @@ def render_diagnostico_page():
 
     archivo_maestro = st.file_uploader(
         "Sube el libro de Excel con los formatos DIAN",
-        type=["xlsx"],
+        type=["xlsx", "xls"],
         key="diag_preliminar"
     )
 
