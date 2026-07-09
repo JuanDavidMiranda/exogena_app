@@ -272,6 +272,16 @@ def ejecutar_auditoria_service(archivo_dian, archivo_novasoft):
         # ====================================================
         df_dian_raw = leer_archivo_tabular(archivo_dian)
         df_novasoft_raw = leer_archivo_tabular(archivo_novasoft)
+        print("\n========== DEBUG DIAN RAW ==========")
+        print("Columnas DIAN RAW:", list(df_dian_raw.columns))
+        print("Shape DIAN RAW:", df_dian_raw.shape)
+        print(df_dian_raw.head(15).to_string())
+        print("====================================\n")
+        print("\n========== DEBUG NOVASOFT RAW ==========")
+        print("Columnas NOVASOFT RAW:", list(df_novasoft_raw.columns))
+        print("Shape NOVASOFT RAW:", df_novasoft_raw.shape)
+        print(df_novasoft_raw.head(10).to_string())
+        print("========================================\n")
 
         if df_dian_raw is None or df_dian_raw.empty:
             raise ValueError("El archivo DIAN no contiene información válida.")
