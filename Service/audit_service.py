@@ -6,20 +6,47 @@ from Utils.excel_reader import leer_excel_seguro
 COLUMNAS_CLAVE_POSIBLES = [
     "concepto",
     "cuenta",
+    "codigo cuenta",
+    "código cuenta",
+    "cuenta contable",
     "nit",
+    "nit tercero",
+    "nit proveedor",
     "documento",
+    "numero documento",
+    "número documento",
+    "identificacion",
+    "identificación",
     "tercero",
+    "nombre tercero",
+    "proveedor",
+    "provee",
+    "cod provee",
+    "codigo proveedor",
+    "código proveedor",
     "razon social",
-    "razón social"
+    "razón social",
+    "razon social tercero",
+    "razón social tercero"
 ]
 
 COLUMNAS_MONTO_POSIBLES = [
     "valor",
+    "valor total",
     "monto",
     "cuantia",
     "cuantía",
     "saldo",
-    "base"
+    "saldo final",
+    "base",
+    "debito",
+    "débito",
+    "credito",
+    "crédito",
+    "pago o abono",
+    "pago o abono en cuenta",
+    "retencion",
+    "retención"
 ]
 
 
@@ -47,11 +74,29 @@ def leer_archivo_tabular(archivo):
 
 
 def encontrar_columna(df: pd.DataFrame, candidatos: list[str]):
-    columnas_normalizadas = {normalizar_texto(col): col for col in df.columns}
+    """
+    Busca una columna por coincidencia exacta o parcial.
+    Primero intenta match exacto.
+    Si no encuentra, busca si el candidato está contenido en el nombre de la columna.
+    """
+    columnas_originales = list(df.columns)
+    columnas_normalizadas = {
+        normalizar_texto(col): col for col in columnas_originales
+    }
 
+    # 1) Coincidencia exacta
     for candidato in candidatos:
-        if candidato in columnas_normalizadas:
-            return columnas_normalizadas[candidato]
+        candidato_norm = normalizar_texto(candidato)
+        if candidato_norm in columnas_normalizadas:
+            return columnas_normalizadas[candidato_norm]
+
+    # 2) Coincidencia parcial: "nit" dentro de "nit tercero", etc.
+    for col in columnas_originales:
+        col_norm = normalizar_texto(col)
+        for candidato in candidatos:
+            candidato_norm = normalizar_texto(candidato)
+            if candidato_norm in col_norm:
+                return col
 
     return None
 
@@ -64,14 +109,14 @@ def preparar_df_para_auditoria(df: pd.DataFrame, origen: str) -> pd.DataFrame:
 
     if not col_clave:
         raise ValueError(
-            f"No se encontró una columna clave válida en el archivo {origen}. "
-            f"Se esperaba alguna de estas columnas: {', '.join(COLUMNAS_CLAVE_POSIBLES)}"
+        f"No se encontró una columna clave válida en el archivo {origen}. "
+        f"Columnas detectadas: {', '.join(df.columns.astype(str))}"
         )
 
     if not col_monto:
         raise ValueError(
-            f"No se encontró una columna de monto válida en el archivo {origen}. "
-            f"Se esperaba alguna de estas columnas: {', '.join(COLUMNAS_MONTO_POSIBLES)}"
+        f"No se encontró una columna de monto válida en el archivo {origen}. "
+        f"Columnas detectadas: {', '.join(df.columns.astype(str))}"
         )
 
     df = df.copy()
