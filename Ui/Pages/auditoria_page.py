@@ -211,8 +211,41 @@ def render_auditoria_page():
             st.markdown("### 📥 Exportar resultado de conciliación")
 
             buffer = io.BytesIO()
+
             with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-                detalle.to_excel(writer, sheet_name="Conciliacion", index=False)
+                # Hoja 1: resumen
+                resumen_df = pd.DataFrame([
+                    {
+                        "Total DIAN": resumen["total_dian"],
+                        "Total Novasoft": resumen["total_novasoft"],
+                        "Diferencia total": resumen["diferencia_total"],
+                        "Terceros DIAN": resumen["terceros_dian"],
+                        "Terceros Novasoft": resumen["terceros_novasoft"],
+                        "Registros DIAN": resumen["registros_dian"],
+                        "Registros Novasoft": resumen["registros_novasoft"],
+                        "Conciliados": resumen["conciliados"],
+                        "Con diferencia": resumen["con_diferencia"],
+                        "Solo en DIAN": resumen["solo_dian"],
+                        "Solo en Novasoft": resumen["solo_novasoft"],
+                        "Diferencias de monto": resumen["dif_montos"],
+                    }
+                ])
+
+            (solo_dian if solo_dian is not None else pd.DataFrame()).to_excel(
+                writer, sheet_name="Solo DIAN", index=False
+            )
+
+            (solo_novasoft if solo_novasoft is not None else pd.DataFrame()).to_excel(
+                writer, sheet_name="Solo Novasoft", index=False
+            )
+
+            (dif_montos if dif_montos is not None else pd.DataFrame()).to_excel(
+                writer, sheet_name="Dif Montos", index=False
+            )
+
+            (conciliados_df if conciliados_df is not None else pd.DataFrame()).to_excel(
+                writer, sheet_name="Conciliados", index=False
+            )
 
             buffer.seek(0)
 
