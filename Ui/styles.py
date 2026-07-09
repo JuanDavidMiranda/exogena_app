@@ -13,10 +13,11 @@ def load_global_styles():
     /* Quitar espacio superior del contenedor principal */
     .block-container {
         padding-top: 1rem !important;
-        padding-bottom: 1rem !important;
+        padding-bottom: 5rem !important;
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
         max-width: 1200px;
     }
-
     /* ===== Header / control del sidebar ===== */
     header[data-testid="stHeader"] {
         min-height: 3.5rem !important;
