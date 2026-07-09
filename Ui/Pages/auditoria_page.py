@@ -212,40 +212,59 @@ def render_auditoria_page():
 
             buffer = io.BytesIO()
 
+            # Blindar dataframes por si alguno viene None
+            detalle_export = detalle if isinstance(detalle, pd.DataFrame) else pd.DataFrame()
+            solo_dian_export = solo_dian if isinstance(solo_dian, pd.DataFrame) else pd.DataFrame()
+            solo_novasoft_export = solo_novasoft if isinstance(solo_novasoft, pd.DataFrame) else pd.DataFrame()
+            dif_montos_export = dif_montos if isinstance(dif_montos, pd.DataFrame) else pd.DataFrame()
+            conciliados_export = conciliados_df if isinstance(conciliados_df, pd.DataFrame) else pd.DataFrame()
+
+            # Si detalle viene vacío, al menos crear una hoja mínima para evitar el error
+            if detalle_export.empty:
+                detalle_export = pd.DataFrame([{"Mensaje": "No se encontraron resultados para exportar"}])
+
             with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
                 # Hoja 1: resumen
                 resumen_df = pd.DataFrame([
                     {
-                        "Total DIAN": resumen["total_dian"],
-                        "Total Novasoft": resumen["total_novasoft"],
-                        "Diferencia total": resumen["diferencia_total"],
-                        "Terceros DIAN": resumen["terceros_dian"],
-                        "Terceros Novasoft": resumen["terceros_novasoft"],
-                        "Registros DIAN": resumen["registros_dian"],
-                        "Registros Novasoft": resumen["registros_novasoft"],
-                        "Conciliados": resumen["conciliados"],
-                        "Con diferencia": resumen["con_diferencia"],
-                        "Solo en DIAN": resumen["solo_dian"],
-                        "Solo en Novasoft": resumen["solo_novasoft"],
-                        "Diferencias de monto": resumen["dif_montos"],
+                        "Total DIAN": resumen.get("total_dian", 0),
+                        "Total Novasoft": resumen.get("total_novasoft", 0),
+                        "Diferencia total": resumen.get("diferencia_total", 0),
+                        "Terceros DIAN": resumen.get("terceros_dian", 0),
+                        "Terceros Novasoft": resumen.get("terceros_novasoft", 0),
+                        "Registros DIAN": resumen.get("registros_dian", 0),
+                        "Registros Novasoft": resumen.get("registros_novasoft", 0),
+                        "Conciliados": resumen.get("conciliados", 0),
+                        "Con diferencia": resumen.get("con_diferencia", 0),
+                        "Solo en DIAN": resumen.get("solo_dian", 0),
+                        "Solo en Novasoft": resumen.get("solo_novasoft", 0),
+                        "Diferencias de monto": resumen.get("dif_montos", 0),
                     }
                 ])
+                resumen_df.to_excel(writer, sheet_name="Resumen", index=False)
 
-            (solo_dian if solo_dian is not None else pd.DataFrame()).to_excel(
-                writer, sheet_name="Solo DIAN", index=False
-            )
+                # Hoja 2: detalle general
+                detalle_export.to_excel(writer, sheet_name="Detalle", index=False)
 
-            (solo_novasoft if solo_novasoft is not None else pd.DataFrame()).to_excel(
-                writer, sheet_name="Solo Novasoft", index=False
-            )
+                # Hoja 3: solo DIAN
+                if solo_dian_export.empty:
+                    solo_dian_export = pd.DataFrame([{"Mensaje": "Sin registros solo en DIAN"}])
+                solo_dian_export.to_excel(writer, sheet_name="Solo DIAN", index=False)
 
-            (dif_montos if dif_montos is not None else pd.DataFrame()).to_excel(
-                writer, sheet_name="Dif Montos", index=False
-            )
+                # Hoja 4: solo Novasoft
+                if solo_novasoft_export.empty:
+                    solo_novasoft_export = pd.DataFrame([{"Mensaje": "Sin registros solo en Novasoft"}])
+                solo_novasoft_export.to_excel(writer, sheet_name="Solo Novasoft", index=False)
 
-            (conciliados_df if conciliados_df is not None else pd.DataFrame()).to_excel(
-                writer, sheet_name="Conciliados", index=False
-            )
+                # Hoja 5: diferencias de monto
+                if dif_montos_export.empty:
+                    dif_montos_export = pd.DataFrame([{"Mensaje": "Sin diferencias de monto"}])
+                dif_montos_export.to_excel(writer, sheet_name="Dif Montos", index=False)
+
+                # Hoja 6: conciliados
+                if conciliados_export.empty:
+                    conciliados_export = pd.DataFrame([{"Mensaje": "Sin registros conciliados"}])
+                conciliados_export.to_excel(writer, sheet_name="Conciliados", index=False)
 
             buffer.seek(0)
 
