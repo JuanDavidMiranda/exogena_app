@@ -54,6 +54,10 @@ def render_auditoria_page():
 
             resumen = resultado["resumen"]
             detalle = resultado["detalle"]
+            solo_dian = resultado["solo_dian"]
+            solo_novasoft = resultado["solo_novasoft"]
+            dif_montos = resultado["dif_montos"]
+            conciliados_df = resultado["conciliados_df"]
 
             soft_divider()
 
@@ -159,6 +163,45 @@ def render_auditoria_page():
                 width="stretch",
                 hide_index=True
             )
+
+            soft_divider()
+
+            # ==========================
+            # Subresultados de conciliación
+            # ==========================
+            st.markdown("### 🔎 Detalle de hallazgos")
+
+            if not dif_montos.empty:
+                st.markdown("#### 💰 Diferencias de monto")
+                st.dataframe(
+                    dif_montos,
+                    width="stretch",
+                    hide_index=True
+                )
+
+            if not solo_dian.empty:
+                st.markdown("#### 📄 Registros presentes solo en DIAN")
+                st.dataframe(
+                    solo_dian,
+                    width="stretch",
+                    hide_index=True
+                )
+
+            if not solo_novasoft.empty:
+                st.markdown("#### 🧾 Registros presentes solo en Novasoft")
+                st.dataframe(
+                solo_novasoft,
+                width="stretch",
+                hide_index=True
+                )
+
+            if not conciliados_df.empty:
+                with st.expander("🟢 Ver registros conciliados", expanded=False):
+                    st.dataframe(
+                    conciliados_df,
+                    width="stretch",
+                    hide_index=True
+                )
 
             soft_divider()
 
