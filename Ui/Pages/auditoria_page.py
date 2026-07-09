@@ -9,7 +9,7 @@ from Ui.components import section_header, kpi_card, status_box, soft_divider
 def render_auditoria_page():
     section_header(
         "🔄 Auditoría de datos: Novasoft vs formatos DIAN",
-        "Cruza el archivo base de Novasoft con el borrador del formato DIAN para identificar diferencias, faltantes y registros exclusivos."
+        "Cruza el archivo base de Novasoft con el borrador del formato DIAN para identificar diferencias en valores por tercero."
     )
 
     st.markdown("### Archivos de entrada")
@@ -25,7 +25,7 @@ def render_auditoria_page():
     with col2:
         archivo_dian = st.file_uploader(
             "Sube el borrador del formato DIAN",
-            type=["xlsx", "csv", "xls"],
+            type=["xlsx", "xls", "csv"],
             key="dian_file"
         )
 
@@ -33,90 +33,153 @@ def render_auditoria_page():
         st.info("Carga ambos archivos para ejecutar la auditoría y conciliación.")
         return
 
-    try:
-        resultado = ejecutar_auditoria_service(archivo_novasoft, archivo_dian)
+    st.markdown("")
 
-        resumen = resultado["resumen"]
-        dif_montos = resultado["dif_montos"]
-        solo_dian = resultado["solo_dian"]
-        solo_novasoft = resultado["solo_novasoft"]
+    if st.button("📊 Ejecutar conciliación", width="stretch"):
+        try:
+            # OJO: tu service recibe primero DIAN y luego Novasoft
+            resultado = ejecutar_auditoria_service(archivo_dian, archivo_novasoft)
 
-        # ==========================
-        # KPIs principales
-        # ==========================
-        st.markdown("### Resultado de la conciliación")
-        c1, c2, c3 = st.columns(3)
+            if not resultado.get("ok"):
+                status_box(
+                    resultado.get("mensaje", "Ocurrió un error en la conciliación."),
+                    kind="error"
+                )
+                return
 
-        with c1:
-            kpi_card(
-                "Diferencias en montos",
-                resumen["diferencias_montos"],
-                "Registros con cuantías distintas"
+            status_box(
+                resultado.get("mensaje", "Conciliación procesada correctamente."),
+                kind="ok"
             )
 
-        with c2:
-            kpi_card(
-                "Solo en DIAN",
-                resumen["solo_dian"],
-                "Registros que no aparecen en Novasoft"
+            resumen = resultado["resumen"]
+            detalle = resultado["detalle"]
+
+            soft_divider()
+
+            # ==========================
+            # KPIs principales
+            # ==========================
+            st.markdown("### Resultado de la conciliación")
+
+            c1, c2, c3, c4 = st.columns(4)
+
+            with c1:
+                kpi_card(
+                    "Total DIAN",
+                    f"${resumen['total_dian']:,.0f}",
+                    "Suma consolidada del archivo DIAN"
+                )
+
+            with c2:
+                kpi_card(
+                    "Total Novasoft",
+                    f"${resumen['total_novasoft']:,.0f}",
+                    "Suma consolidada del archivo Novasoft"
+                )
+
+            with c3:
+                kpi_card(
+                    "Terceros conciliados",
+                    resumen["conciliados"],
+                    "Terceros sin diferencia"
+                )
+
+            with c4:
+                kpi_card(
+                    "Con diferencia",
+                    resumen["con_diferencia"],
+                    "Terceros con valores distintos"
+                )
+
+            st.markdown("")
+
+            c5, c6, c7, c8 = st.columns(4)
+
+            with c5:
+                kpi_card(
+                    "Diferencia total",
+                    f"${resumen['diferencia_total']:,.0f}",
+                    "DIAN - Novasoft"
+                )
+
+            with c6:
+                kpi_card(
+                    "Terceros DIAN",
+                    resumen["terceros_dian"],
+                    "Terceros detectados en DIAN"
+                )
+
+            with c7:
+                kpi_card(
+                    "Terceros Novasoft",
+                    resumen["terceros_novasoft"],
+                    "Terceros detectados en Novasoft"
+                )
+
+            with c8:
+                kpi_card(
+                    "Registros procesados",
+                    resumen["registros_dian"] + resumen["registros_novasoft"],
+                    "Suma de filas leídas en ambos archivos"
+                )
+
+            soft_divider()
+
+            # ==========================
+            # Resumen ejecutivo
+            # ==========================
+            st.markdown("### 🧾 Resumen ejecutivo")
+
+            diferencia_total = resumen["diferencia_total"]
+            conciliados = resumen["conciliados"]
+            con_diferencia = resumen["con_diferencia"]
+
+            if abs(diferencia_total) < 0.01 and con_diferencia == 0:
+                status_box(
+                    "La conciliación no presenta diferencias entre los valores consolidados de DIAN y Novasoft.",
+                    kind="ok"
+                )
+            else:
+                status_box(
+                    f"Se detectaron diferencias en la conciliación. "
+                    f"Total conciliado: <strong>{conciliados}</strong> tercero(s). "
+                    f"Con diferencia: <strong>{con_diferencia}</strong> tercero(s). "
+                    f"Diferencia total: <strong>${diferencia_total:,.0f}</strong>.",
+                    kind="warning"
+                )
+
+            # ==========================
+            # Tabla principal
+            # ==========================
+            st.markdown("### 📋 Detalle consolidado por tercero")
+
+            st.dataframe(
+                detalle,
+                width="stretch",
+                hide_index=True
             )
 
-        with c3:
-            kpi_card(
-                "Solo en Novasoft",
-                resumen["solo_novasoft"],
-                "Registros que no aparecen en DIAN"
+            soft_divider()
+
+            # ==========================
+            # Descargar resultado
+            # ==========================
+            st.markdown("### 📥 Exportar resultado de conciliación")
+
+            buffer = io.BytesIO()
+            with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+                detalle.to_excel(writer, sheet_name="Conciliacion", index=False)
+
+            buffer.seek(0)
+
+            st.download_button(
+                label="📥 Descargar conciliación final (.xlsx)",
+                data=buffer,
+                file_name="conciliacion_final_exogena.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                width="stretch"
             )
 
-        status_box(
-            "Cruce completado con éxito. Revisa los tres grupos de diferencias y descarga el consolidado final.",
-            kind="ok"
-        )
-
-        soft_divider()
-
-        # ==========================
-        # Resultados en expanders
-        # ==========================
-        with st.expander("📌 Ver diferencias de montos", expanded=False):
-            if isinstance(dif_montos, pd.DataFrame) and not dif_montos.empty:
-                st.dataframe(dif_montos, use_container_width=True)
-            else:
-                st.info("No se encontraron diferencias de montos.")
-
-        with st.expander("📌 Ver registros solo en DIAN", expanded=False):
-            if isinstance(solo_dian, pd.DataFrame) and not solo_dian.empty:
-                st.dataframe(solo_dian, use_container_width=True)
-            else:
-                st.info("No se encontraron registros exclusivos en DIAN.")
-
-        with st.expander("📌 Ver registros solo en Novasoft", expanded=False):
-            if isinstance(solo_novasoft, pd.DataFrame) and not solo_novasoft.empty:
-                st.dataframe(solo_novasoft, use_container_width=True)
-            else:
-                st.info("No se encontraron registros exclusivos en Novasoft.")
-
-        soft_divider()
-
-        # ==========================
-        # Exportar consolidado
-        # ==========================
-        st.markdown("### 📥 Exportar resultado de conciliación")
-
-        buffer = io.BytesIO()
-        with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-            dif_montos.to_excel(writer, sheet_name="Diferencias_Montos", index=False)
-            solo_dian.to_excel(writer, sheet_name="Solo_en_DIAN", index=False)
-            solo_novasoft.to_excel(writer, sheet_name="Solo_en_Novasoft", index=False)
-
-        buffer.seek(0)
-
-        st.download_button(
-            label="📥 Descargar conciliación final (.xlsx)",
-            data=buffer,
-            file_name="conciliacion_final_exogena.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-
-    except Exception as e:
-        status_box(f"Error al procesar la conciliación: {e}", kind="error")
+        except Exception as e:
+            status_box(f"Error al procesar la conciliación: {e}", kind="error")
