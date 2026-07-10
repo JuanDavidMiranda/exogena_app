@@ -1,110 +1,133 @@
 import streamlit as st
-from Core.auth_manager import crear_usuario, autenticar_usuario
+
 from Service.transacciones_service import (
     registrar_usuario_si_no_existe,
-    obtener_usuario
+    obtener_rol_usuario
 )
 
+# ==========================================================
+# USUARIOS DE ACCESO / ORIGEN DE AUTENTICACIÓN
+# ==========================================================
+# Aquí dejas los usuarios válidos para iniciar sesión.
+# Luego, SQLite se encarga de persistirlos y guardar su rol.
+USUARIOS_APP = {
+    "prueba": {
+        "password": "12345",
+        "nombre": "Usuario Prueba"
+    },
+    "juan": {
+        "password": "12345",
+        "nombre": "juan david miranda"
+    }
+}
 
+
+# ==========================================================
+# SESIÓN
+# ==========================================================
 def inicializar_sesion():
-    """
-    Asegura que existan las variables base de sesión.
-    """
-    if "authenticated" not in st.session_state:
-        st.session_state["authenticated"] = False
+    if "autenticado" not in st.session_state:
+        st.session_state.autenticado = False
+
+    if "username" not in st.session_state:
+        st.session_state.username = None
+
+    if "nombre" not in st.session_state:
+        st.session_state.nombre = None
+
+    if "rol" not in st.session_state:
+        st.session_state.rol = None
 
     if "user_info" not in st.session_state:
-        st.session_state["user_info"] = None
+        st.session_state.user_info = None
 
 
-def registrar_usuario_service(nombre, username, password, confirm_password):
+def usuario_autenticado():
+    return st.session_state.get("autenticado", False)
+
+
+def es_admin():
+    return st.session_state.get("rol") == "admin"
+
+
+def cerrar_sesion():
+    st.session_state.autenticado = False
+    st.session_state.username = None
+    st.session_state.nombre = None
+    st.session_state.rol = None
+    st.session_state.user_info = None
+    st.rerun()
+
+
+# ==========================================================
+# AUTENTICACIÓN
+# ==========================================================
+def autenticar_usuario(username: str, password: str):
     """
-    Registra un nuevo usuario validando confirmación de contraseña.
-    Además lo sincroniza con SQLite para manejo de roles.
+    Valida el usuario contra la fuente actual de autenticación
+    y luego sincroniza/recupera su rol desde SQLite.
     """
-    if password != confirm_password:
-        raise ValueError("Las contraseñas no coinciden.")
+    username = (username or "").strip().lower()
+    password = (password or "").strip()
 
-    if not nombre or not username or not password:
-        raise ValueError("Todos los campos son obligatorios.")
+    if not username or not password:
+        return False, "Debes ingresar usuario y contraseña."
 
-    # 1) Registrar en tu sistema actual de autenticación
-    usuario = crear_usuario(nombre, username, password)
+    usuario = USUARIOS_APP.get(username)
 
-    # 2) Registrar también en SQLite con rol por defecto = usuario
+    if not usuario:
+        return False, "Usuario no encontrado."
+
+    if usuario["password"] != password:
+        return False, "Contraseña incorrecta."
+
+    nombre = usuario.get("nombre", username)
+
+    # ======================================================
+    # 1) Registrar el usuario en SQLite si no existe
+    #    Siempre entra como 'usuario' la primera vez.
+    # ======================================================
     registrar_usuario_si_no_existe(
         username=username,
         nombre=nombre,
         rol="usuario"
     )
 
-    return usuario
+    # ======================================================
+    # 2) Recuperar el rol real desde SQLite
+    #    Si ya fue ascendido a admin, aquí se conserva.
+    # ======================================================
+    rol_real = obtener_rol_usuario(username)
 
+    # Fallback de seguridad
+    if not rol_real:
+        rol_real = "usuario"
 
-def login_service(username, password):
-    """
-    Autentica al usuario, lo sincroniza con SQLite y guarda la sesión.
-    """
-    # 1) Autenticación contra tu sistema actual
-    usuario = autenticar_usuario(username, password)
-
-    # ==========================================================
-    # Normalizar datos del usuario autenticado
-    # ==========================================================
-    # Soporta si auth_manager devuelve dict u objeto
-    if isinstance(usuario, dict):
-        username_real = (
-            usuario.get("username")
-            or usuario.get("usuario")
-            or username
-        )
-        nombre_real = (
-            usuario.get("nombre")
-            or usuario.get("name")
-            or username_real
-        )
-    else:
-        username_real = getattr(usuario, "username", username)
-        nombre_real = getattr(usuario, "nombre", username_real)
-
-    # 2) Si no existe en SQLite, se crea como usuario normal
-    registrar_usuario_si_no_existe(
-        username=username_real,
-        nombre=nombre_real,
-        rol="usuario"
-    )
-
-    # 3) Consultar rol real desde SQLite
-    usuario_db = obtener_usuario(username_real)
-
-    rol_real = "usuario"
-    if usuario_db and usuario_db.get("rol"):
-        rol_real = usuario_db["rol"]
-
-    # 4) Guardar sesión enriquecida
-    user_info = {
-        "username": username_real,
-        "nombre": nombre_real,
+    # ======================================================
+    # 3) Guardar sesión
+    # ======================================================
+    st.session_state.autenticado = True
+    st.session_state.username = username
+    st.session_state.nombre = nombre
+    st.session_state.rol = rol_real
+    st.session_state.user_info = {
+        "username": username,
+        "nombre": nombre,
         "rol": rol_real
     }
 
-    st.session_state["authenticated"] = True
-    st.session_state["user_info"] = user_info
-
-    return user_info
+    return True, "Inicio de sesión exitoso."
 
 
-def logout_service():
-    """
-    Cierra la sesión actual.
-    """
-    st.session_state["authenticated"] = False
-    st.session_state["user_info"] = None
-
-
-def usuario_autenticado():
-    return st.session_state.get("authenticated", False)
-
-
+# ==========================================================
+# HELPERS DE USUARIO EN SESIÓN
+# ==========================================================
 def obtener_usuario_actual():
-    return st.session_state.get("user_info")
+    if not usuario_autenticado():
+        return None
+
+    return {
+        "username": st.session_state.get("username"),
+        "nombre": st.session_state.get("nombre"),
+        "rol": st.session_state.get("rol")
+    }
