@@ -19,79 +19,58 @@ def render_hero():
 
 
 def render_sidebar():
+    import streamlit as st
+
+    user_info = st.session_state.get("user_info", {}) or {}
+    nombre = user_info.get("nombre", "Usuario")
+    rol = user_info.get("rol", "usuario")
+
     with st.sidebar:
-        usuario = obtener_usuario_actual()
-
-        st.markdown("## 📊 EXÓGENA DIAN")
-        st.caption("Automatización tributaria para medios magnéticos")
-
-        st.divider()
-
-        if usuario:
-            st.markdown("### 👤 Sesión activa")
-            st.write(f"**{usuario.get('nombre', 'Sin nombre')}**")
-            st.caption(f"Rol: {usuario.get('rol', 'usuario')}")
-
-        st.divider()
+        st.markdown(
+            f"""
+            <div class="sidebar-user-card">
+                <div class="sidebar-user-name">{nombre}</div>
+                <div class="sidebar-user-role">Rol: {rol.capitalize()}</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
         st.markdown("### 📂 Módulos")
 
-        if "modulo" not in st.session_state:
-            st.session_state.modulo = "Inicio"
+        opciones = [
+            "Inicio",
+            "Diagnóstico Preliminar de Formatos",
+            "Comparar Excel Dian vs Novasoft",
+            "Generar XML para la DIAN",
+        ]
 
-        if st.button(
-            "🏠 Inicio",
-            use_container_width=True,
-        ):
-            st.session_state.modulo = "Inicio"
-            st.rerun()
+        # Solo admins ven el panel administrativo
+        if rol == "admin":
+            opciones.append("Panel Administrativo")
 
-        if st.button(
-            "🔍 Diagnóstico Preliminar",
-            use_container_width=True,
-        ):
-            st.session_state.modulo = "Diagnóstico Preliminar de Formatos"
-            st.rerun()
+        # Mantiene la selección actual si ya existe
+        if "menu_option" not in st.session_state:
+            st.session_state["menu_option"] = "Inicio"
 
-        if st.button(
-            "📊 Comparar Excel",
-            use_container_width=True,
-        ):
-            st.session_state.modulo = "Comparar Excel Dian vs Novasoft"
-            st.rerun()
+        opcion = st.radio(
+            "Selecciona un módulo",
+            opciones,
+            index=opciones.index(st.session_state["menu_option"])
+            if st.session_state["menu_option"] in opciones else 0,
+            label_visibility="collapsed"
+        )
 
-        if st.button(
-            "📄 Generar XML",
-            use_container_width=True,
-        ):
-            st.session_state.modulo = "Generar XML para la DIAN"
-            st.rerun()
+        st.session_state["menu_option"] = opcion
 
-        st.divider()
+        st.markdown("---")
 
-        if st.button(
-            "🚪 Cerrar sesión",
-            use_container_width=True,
-        ):
+        if st.button("Cerrar sesión", width="stretch"):
+            from Service.auth_service import logout_service
             logout_service()
             st.rerun()
 
-        st.divider()
-
-        with st.expander("🧭 Acerca de la aplicación"):
-            st.caption("""
-            • Detecta formatos DIAN en archivos Excel.
-
-            • Evalúa la obligatoriedad preliminar.
-
-            • Compara la estructura Novasoft vs DIAN.
-
-            • Genera XML listos para presentar ante la DIAN.
-            """)
-
-        st.caption("Versión 1.0 • Vigencia 2025")
-
-    return st.session_state.modulo
+    return opcion
 
 
 def section_header(title, subtitle):

@@ -34,6 +34,7 @@ from Ui.Pages.xml_page import render_xml_page
 from Service.auth_service import inicializar_sesion, usuario_autenticado
 from Ui.Pages.dashboard import render_dashboard
 from Service.transacciones_service import init_db, DB_PATH
+from Ui.Pages.admin_page import render_admin_page
 # ==========================================
 # CONFIGURACIÓN DE LA APP
 # ==========================================
@@ -46,6 +47,9 @@ try:
     st.write("Ruta absoluta app.db:", DB_PATH.resolve())
 except Exception as e:
     st.error(f"Error al inicializar SQLite: {e}")
+
+from Service.transacciones_service import actualizar_rol_usuario
+actualizar_rol_usuario("prueba", "admin")
 st.set_page_config(
     page_title="Automatización Exógena DIAN",
     page_icon="📊",
@@ -90,3 +94,6 @@ elif opcion == "Comparar Excel Dian vs Novasoft":
 
 elif opcion == "Generar XML para la DIAN":
     render_xml_page()
+
+elif opcion == "Panel Administrativo":
+    render_admin_page()
