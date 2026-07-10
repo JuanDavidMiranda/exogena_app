@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 import sqlite3
 import pandas as pd
 from datetime import datetime
@@ -6,18 +6,18 @@ from datetime import datetime
 # ==========================================================
 # RUTA DB
 # ==========================================================
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_DIR = os.path.join(BASE_DIR, "data")
-os.makedirs(DATA_DIR, exist_ok=True)
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = BASE_DIR / "data"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-DB_PATH = os.path.join(DATA_DIR, "app.db")
+DB_PATH = DATA_DIR / "app.db"
 
 
 # ==========================================================
 # CONEXIÓN
 # ==========================================================
 def get_connection():
-    return sqlite3.connect(DB_PATH)
+    return sqlite3.connect(str(DB_PATH))
 
 
 # ==========================================================
@@ -164,7 +164,7 @@ def registrar_transaccion(
 ):
     """
     Registra una transacción del sistema.
-    Compatible con los módulos Diagnóstico / Auditoría / XML.
+    Compatible con Diagnóstico / Auditoría / XML.
     """
     conn = get_connection()
     cur = conn.cursor()
@@ -246,15 +246,12 @@ def obtener_resumen_admin():
     conn = get_connection()
     cur = conn.cursor()
 
-    # usuarios
     cur.execute("SELECT COUNT(*) FROM usuarios")
     usuarios = cur.fetchone()[0]
 
-    # transacciones
     cur.execute("SELECT COUNT(*) FROM transacciones")
     transacciones = cur.fetchone()[0]
 
-    # por módulo
     cur.execute("SELECT COUNT(*) FROM transacciones WHERE modulo = 'Diagnóstico'")
     diagnosticos = cur.fetchone()[0]
 
@@ -264,7 +261,6 @@ def obtener_resumen_admin():
     cur.execute("SELECT COUNT(*) FROM transacciones WHERE modulo = 'Generar XML'")
     xml_generados = cur.fetchone()[0]
 
-    # errores
     cur.execute("SELECT COUNT(*) FROM transacciones WHERE estado = 'ERROR'")
     errores = cur.fetchone()[0]
 
