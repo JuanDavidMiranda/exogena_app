@@ -303,3 +303,12 @@ def obtener_errores_por_modulo():
     """, conn)
     conn.close()
     return df
+
+def reset_db():
+    """
+    Borra la base actual y la recrea desde cero.
+    Úsalo solo cuando necesites limpiar el esquema.
+    """
+    if DB_PATH.exists():
+        DB_PATH.unlink()
+    init_db()

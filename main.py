@@ -33,7 +33,15 @@ from Ui.Pages.auditoria_page import render_auditoria_page
 from Ui.Pages.xml_page import render_xml_page
 from Service.auth_service import inicializar_sesion, usuario_autenticado
 from Ui.Pages.dashboard import render_dashboard
-from Service.transacciones_service import init_db, DB_PATH
+from Service.transacciones_service import reset_db, DB_PATH
+
+try:
+    reset_db()
+    st.write("reset_db() ejecutado correctamente")
+    st.write("¿Existe app.db?:", DB_PATH.exists())
+    st.write("Ruta absoluta app.db:", DB_PATH.resolve())
+except Exception as e:
+    st.error(f"Error al inicializar SQLite: {e}")
 from Ui.Pages.admin_page import render_admin_page
 # ==========================================
 # CONFIGURACIÓN DE LA APP
@@ -41,8 +49,8 @@ from Ui.Pages.admin_page import render_admin_page
 st.write("DB_PATH detectado:", DB_PATH)
 
 try:
-    init_db()
-    st.write("init_db() ejecutado correctamente")
+    reset_db()
+    st.write("reset_db() ejecutado correctamente")
     st.write("¿Existe app.db?:", DB_PATH.exists())
     st.write("Ruta absoluta app.db:", DB_PATH.resolve())
 except Exception as e:
