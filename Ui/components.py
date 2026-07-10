@@ -1,5 +1,6 @@
 import streamlit as st
-from Service.auth_service import obtener_usuario_actual, logout_service
+from Service.auth_service import obtener_usuario_actual, cerrar_sesion
+
 
 def render_hero():
     st.markdown("""
@@ -19,9 +20,7 @@ def render_hero():
 
 
 def render_sidebar():
-    import streamlit as st
-
-    user_info = st.session_state.get("user_info", {}) or {}
+    user_info = obtener_usuario_actual() or {}
     nombre = user_info.get("nombre", "Usuario")
     rol = user_info.get("rol", "usuario")
 
@@ -53,11 +52,14 @@ def render_sidebar():
         if "menu_option" not in st.session_state:
             st.session_state["menu_option"] = "Inicio"
 
+        opcion_actual = st.session_state.get("menu_option", "Inicio")
+        if opcion_actual not in opciones:
+            opcion_actual = "Inicio"
+
         opcion = st.radio(
             "Selecciona un módulo",
             opciones,
-            index=opciones.index(st.session_state["menu_option"])
-            if st.session_state["menu_option"] in opciones else 0,
+            index=opciones.index(opcion_actual),
             label_visibility="collapsed"
         )
 
@@ -66,9 +68,7 @@ def render_sidebar():
         st.markdown("---")
 
         if st.button("Cerrar sesión", width="stretch"):
-            from Service.auth_service import logout_service
-            logout_service()
-            st.rerun()
+            cerrar_sesion()
 
     return opcion
 

@@ -131,3 +131,6 @@ def obtener_usuario_actual():
         "nombre": st.session_state.get("nombre"),
         "rol": st.session_state.get("rol")
     }
+
+def logout_service():
+    cerrar_sesion()
