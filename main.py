@@ -38,7 +38,6 @@ from Ui.Pages.admin_page import render_admin_page
 # ==========================================
 # CONFIGURACIÓN DE LA APP
 # ==========================================
-st.write("DB_PATH detectado:", DB_PATH)
 
 init_db()
 st.set_page_config(
