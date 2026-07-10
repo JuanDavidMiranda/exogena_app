@@ -33,9 +33,11 @@ from Ui.Pages.auditoria_page import render_auditoria_page
 from Ui.Pages.xml_page import render_xml_page
 from Service.auth_service import inicializar_sesion, usuario_autenticado
 from Ui.Pages.dashboard import render_dashboard
+from Service.transacciones_service import init_db
 # ==========================================
 # CONFIGURACIÓN DE LA APP
 # ==========================================
+init_db()
 st.set_page_config(
     page_title="Automatización Exógena DIAN",
     page_icon="📊",
