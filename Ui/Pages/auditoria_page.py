@@ -4,6 +4,7 @@ import streamlit as st
 
 from Service.audit_service import ejecutar_auditoria_service
 from Ui.components import section_header, kpi_card, status_box, soft_divider
+from Service.transacciones_service import registrar_transaccion
 
 
 def render_auditoria_page():
@@ -11,6 +12,11 @@ def render_auditoria_page():
         "🔄 Auditoría de datos: Novasoft vs formatos DIAN",
         "Cruza el archivo base de Novasoft con el borrador del formato DIAN para identificar diferencias en valores por tercero."
     )
+
+    user_info = st.session_state.get("user_info", {}) or {}
+    username = user_info.get("username", "")
+    nombre_usuario = user_info.get("nombre", "")
+    rol = user_info.get("rol", "usuario")
 
     st.markdown("### Archivos de entrada")
     col1, col2 = st.columns(2)
@@ -41,6 +47,18 @@ def render_auditoria_page():
             resultado = ejecutar_auditoria_service(archivo_dian, archivo_novasoft)
 
             if not resultado.get("ok"):
+                registrar_transaccion(
+                    modulo="Auditoría",
+                    accion="Ejecutar conciliación",
+                    estado="ERROR",
+                    detalle=resultado.get("mensaje", "Ocurrió un error en la conciliación."),
+                    archivo_1=archivo_dian.name if archivo_dian else "",
+                    archivo_2=archivo_novasoft.name if archivo_novasoft else "",
+                    username=username,
+                    nombre_usuario=nombre_usuario,
+                    rol=rol
+                )
+
                 status_box(
                     resultado.get("mensaje", "Ocurrió un error en la conciliación."),
                     kind="error"
@@ -58,6 +76,25 @@ def render_auditoria_page():
             solo_novasoft = resultado["solo_novasoft"]
             dif_montos = resultado["dif_montos"]
             conciliados_df = resultado["conciliados_df"]
+            registrar_transaccion(
+                modulo="Auditoría",
+                accion="Ejecutar conciliación",
+                estado="OK",
+                detalle=(
+                    f"DIAN: {archivo_dian.name}. "
+                    f"Novasoft: {archivo_novasoft.name}. "
+                    f"Conciliados: {resumen.get('conciliados', 0)}. "
+                    f"Con diferencia: {resumen.get('con_diferencia', 0)}. "
+                    f"Solo DIAN: {resumen.get('solo_dian', 0)}. "
+                    f"Solo Novasoft: {resumen.get('solo_novasoft', 0)}. "
+                    f"Diferencia total: {resumen.get('diferencia_total', 0)}."
+                ),
+                archivo_1=archivo_dian.name if archivo_dian else "",
+                archivo_2=archivo_novasoft.name if archivo_novasoft else "",
+                username=username,
+                nombre_usuario=nombre_usuario,
+                rol=rol
+            )
 
             soft_divider()
 
@@ -268,7 +305,7 @@ def render_auditoria_page():
 
             buffer.seek(0)
 
-            st.download_button(
+            descarga = st.download_button(
                 label="📥 Descargar conciliación final (.xlsx)",
                 data=buffer,
                 file_name="conciliacion_final_exogena.xlsx",
@@ -276,5 +313,29 @@ def render_auditoria_page():
                 width="stretch"
             )
 
+            if descarga:
+                registrar_transaccion(
+                    modulo="Auditoría",
+                    accion="Descargar conciliación",
+                    estado="OK",
+                    detalle="Descarga del archivo consolidado de conciliación.",
+                    archivo_1=archivo_dian.name if archivo_dian else "",
+                    archivo_2=archivo_novasoft.name if archivo_novasoft else "",
+                    username=username,
+                    nombre_usuario=nombre_usuario,
+                    rol=rol
+                )
         except Exception as e:
+            registrar_transaccion(
+                modulo="Auditoría",
+                accion="Ejecutar conciliación",
+                estado="ERROR",
+                detalle=f"Error al procesar la conciliación: {e}",
+                archivo_1=archivo_dian.name if archivo_dian else "",
+                archivo_2=archivo_novasoft.name if archivo_novasoft else "",
+                username=username,
+                nombre_usuario=nombre_usuario,
+                rol=rol
+            )
+
             status_box(f"Error al procesar la conciliación: {e}", kind="error")

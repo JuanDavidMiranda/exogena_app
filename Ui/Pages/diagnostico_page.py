@@ -3,6 +3,7 @@ import streamlit as st
 
 from Service.diagnostic_service import ejecutar_diagnostico_service
 from Ui.components import section_header, kpi_card, status_box, soft_divider
+from Service.transacciones_service import registrar_transaccion
 
 
 def render_diagnostico_page():
@@ -10,6 +11,11 @@ def render_diagnostico_page():
         "📋 Diagnóstico preliminar de formatos",
         "Analiza el libro de Excel y detecta qué formatos DIAN contienen información útil para reporte."
     )
+    
+    user_info = st.session_state.get("user_info", {}) or {}
+    username = user_info.get("username", "")
+    nombre_usuario = user_info.get("nombre", "")
+    rol = user_info.get("rol", "usuario")
 
     # ==========================
     # Bloque de carga
@@ -49,7 +55,7 @@ def render_diagnostico_page():
     with c_info2:
         ejecutar = st.button(
             "▶️ Ejecutar diagnóstico",
-            use_container_width=True,
+            width="stretch",
             type="primary"
         )
 
@@ -65,6 +71,17 @@ def render_diagnostico_page():
             resultado = ejecutar_diagnostico_service(archivo_maestro)
 
         if not resultado["resultados"]:
+            registrar_transaccion(
+                modulo="Diagnóstico",
+                accion="Ejecutar diagnóstico",
+                estado="ERROR",
+                detalle="No se identificaron pestañas válidas dentro del archivo cargado.",
+                archivo_1=archivo_maestro.name if archivo_maestro else "",
+                username=username,
+                nombre_usuario=nombre_usuario,
+                rol=rol
+            )
+
             status_box(
                 "No se identificaron pestañas válidas dentro del archivo cargado.",
                 kind="warning"
@@ -79,6 +96,23 @@ def render_diagnostico_page():
         formatos_con_datos = resultado.get("formatos_con_datos", 0)
         formatos_vacios = resultado.get("formatos_vacios", 0)
         total_formatos = resultado.get("total_formatos", 0)
+
+        registrar_transaccion(
+            modulo="Diagnóstico",
+            accion="Ejecutar diagnóstico",
+            estado="OK",
+            detalle=(
+                f"Archivo analizado: {archivo_maestro.name}. "
+                f"Formatos analizados: {total_formatos}. "
+                f"Con datos: {formatos_con_datos}. "
+                f"Vacíos: {formatos_vacios}. "
+                f"Terceros detectados: {total_terceros}."
+            ),
+            archivo_1=archivo_maestro.name if archivo_maestro else "",
+            username=username,
+            nombre_usuario=nombre_usuario,
+            rol=rol
+        )
 
         # ==========================
         # Resumen general
@@ -175,7 +209,7 @@ def render_diagnostico_page():
 
         st.dataframe(
             df_resultados,
-            use_container_width=True,
+            width="stretch",
             hide_index=True
         )
 
@@ -251,4 +285,15 @@ def render_diagnostico_page():
                 )
 
     except Exception as e:
+        registrar_transaccion(
+            modulo="Diagnóstico",
+            accion="Ejecutar diagnóstico",
+            estado="ERROR",
+            detalle=f"Error en diagnóstico preliminar: {e}",
+            archivo_1=archivo_maestro.name if archivo_maestro else "",
+            username=username,
+            nombre_usuario=nombre_usuario,
+            rol=rol
+        )
+
         status_box(f"Error en el diagnóstico preliminar: {e}", kind="error")

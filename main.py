@@ -48,8 +48,6 @@ try:
 except Exception as e:
     st.error(f"Error al inicializar SQLite: {e}")
 
-from Service.transacciones_service import actualizar_rol_usuario
-actualizar_rol_usuario("prueba", "admin")
 st.set_page_config(
     page_title="Automatización Exógena DIAN",
     page_icon="📊",

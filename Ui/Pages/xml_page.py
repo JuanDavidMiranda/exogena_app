@@ -15,6 +15,7 @@ from Ui.components import (
     soft_divider,
     detectar_formato_desde_pestana
 )
+from Service.transacciones_service import registrar_transaccion
 
 
 def render_xml_page():
@@ -23,6 +24,10 @@ def render_xml_page():
         "Carga el archivo del formato, selecciona la pestaña a procesar, diagnostica la estructura y genera el XML oficial del reporte."
     )
 
+    user_info = st.session_state.get("user_info", {}) or {}
+    username = user_info.get("username", "")
+    nombre_usuario = user_info.get("nombre", "")
+    rol = user_info.get("rol", "usuario")
     # ==========================
     # Configuración del proceso
     # ==========================
@@ -177,6 +182,25 @@ def render_xml_page():
                 advertencias = diagnostico["advertencias"]
                 estado_general = diagnostico["estado_general"]
 
+                registrar_transaccion(
+                    modulo="Generar XML",
+                    accion="Diagnosticar hoja XML",
+                    estado="OK" if estado_general != "ERROR" else "ERROR",
+                    detalle=(
+                        f"Archivo: {archivo_excel.name}. "
+                        f"Pestaña: {pestana_seleccionada}. "
+                        f"Formato: {formato_detectado}. "
+                        f"Estado diagnóstico: {estado_general}. "
+                        f"Registros: {resumen.get('total_registros', 0)}. "
+                        f"Advertencias: {len(advertencias)}. "
+                        f"Errores: {len(errores)}."
+                    ),
+                    archivo_1=archivo_excel.name if archivo_excel else "",
+                    username=username,
+                    nombre_usuario=nombre_usuario,
+                    rol=rol
+                )
+
                 # ==========================
                 # KPIs del diagnóstico
                 # ==========================
@@ -310,6 +334,22 @@ def render_xml_page():
                     )
 
                 st.session_state["xml_generado_resultado"] = resultado
+                registrar_transaccion(
+                    modulo="Generar XML",
+                    accion="Generar XML",
+                    estado="OK",
+                    detalle=(
+                        f"Archivo: {archivo_excel.name}. "
+                        f"Pestaña: {pestana_seleccionada}. "
+                        f"Formato: {resultado.get('formato_detectado', formato_detectado)}. "
+                        f"Registros: {resultado.get('total_registros', 0)}. "
+                        f"Cuantía total: {resultado.get('total_cuantias', 0)}."
+                    ),
+                    archivo_1=archivo_excel.name if archivo_excel else "",
+                    username=username,
+                    nombre_usuario=nombre_usuario,
+                    rol=rol
+                )
                 # =====================================================
         # RESULTADO DEL XML GENERADO (persistente y visible)
         # =====================================================
@@ -325,13 +365,28 @@ def render_xml_page():
             )
 
             # Botón de descarga arriba, visible inmediatamente
-            st.download_button(
+            descarga_xml = st.download_button(
                 label="💾 Descargar archivo XML oficial",
                 data=resultado_xml["xml_bytes"],
                 file_name=resultado_xml["nombre_archivo"],
                 mime="text/xml",
                 width="stretch"
             )
+
+            if descarga_xml:
+                registrar_transaccion(
+                    modulo="Generar XML",
+                    accion="Descargar XML",
+                    estado="OK",
+                    detalle=(
+                        f"Descarga XML formato {resultado_xml.get('formato_detectado', '')} "
+                        f"archivo {resultado_xml.get('nombre_archivo', '')}"
+                    ),
+                    archivo_1=resultado_xml.get("nombre_archivo", ""),
+                    username=username,
+                    nombre_usuario=nombre_usuario,
+                    rol=rol
+                )
 
             st.write("")
 
@@ -359,5 +414,16 @@ def render_xml_page():
                 )
 
     except Exception as e:
+        registrar_transaccion(
+            modulo="Generar XML",
+            accion="Procesar XML",
+            estado="ERROR",
+            detalle=f"Error durante el procesamiento del XML: {e}",
+            archivo_1=archivo_excel.name if archivo_excel else "",
+            username=username,
+            nombre_usuario=nombre_usuario,
+            rol=rol
+        )
+
         status_box(f"Error durante el procesamiento del XML: {e}", kind="error")
         st.code(traceback.format_exc())
