@@ -40,15 +40,7 @@ from Ui.Pages.admin_page import render_admin_page
 # ==========================================
 st.write("DB_PATH detectado:", DB_PATH)
 
-try:
-    init_db()
-
-    st.write("init_db() ejecutado correctamente")
-    st.write("¿Existe app.db?:", DB_PATH.exists())
-    st.write("Ruta absoluta app.db:", DB_PATH.resolve())
-except Exception as e:
-    st.error(f"Error al inicializar SQLite: {e}")
-
+init_db()
 st.set_page_config(
     page_title="Automatización Exógena DIAN",
     page_icon="📊",
