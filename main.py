@@ -58,7 +58,8 @@ st.set_page_config(
 # ==========================================
 load_global_styles()
 inicializar_sesion()
-
+if st.session_state.get("user_info"):
+    st.write("USER INFO SESIÓN:", st.session_state["user_info"])
 # ==========================================
 # BLOQUEO SI NO HAY LOGIN
 # ==========================================
