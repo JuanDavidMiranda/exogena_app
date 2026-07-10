@@ -1,55 +1,52 @@
+import os
 import sqlite3
-from pathlib import Path
-from datetime import datetime
 import pandas as pd
+from datetime import datetime
 
-# ============================================================
-# Configuración de la base de datos
-# ============================================================
-BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "data"
-DB_PATH = DATA_DIR / "app.db"
+# ==========================================================
+# RUTA DB
+# ==========================================================
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = os.path.join(BASE_DIR, "data")
+os.makedirs(DATA_DIR, exist_ok=True)
 
-
-# ============================================================
-# Helpers de conexión
-# ============================================================
-def _asegurar_directorio_data():
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
+DB_PATH = os.path.join(DATA_DIR, "app.db")
 
 
+# ==========================================================
+# CONEXIÓN
+# ==========================================================
 def get_connection():
-    _asegurar_directorio_data()
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    return sqlite3.connect(DB_PATH)
 
 
-# ============================================================
-# Inicialización de la base
-# ============================================================
+# ==========================================================
+# INIT DB
+# ==========================================================
 def init_db():
-    """
-    Crea las tablas base del sistema si no existen.
-    """
     conn = get_connection()
     cur = conn.cursor()
 
+    # --------------------------
+    # Tabla usuarios
+    # --------------------------
     cur.execute("""
         CREATE TABLE IF NOT EXISTS usuarios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL UNIQUE,
+            username TEXT UNIQUE NOT NULL,
             nombre TEXT,
-            rol TEXT NOT NULL DEFAULT 'usuario',
-            activo INTEGER NOT NULL DEFAULT 1,
-            fecha_creacion TEXT NOT NULL
+            rol TEXT DEFAULT 'usuario',
+            activo INTEGER DEFAULT 1,
+            creado_en TEXT
         )
     """)
 
+    # --------------------------
+    # Tabla transacciones
+    # --------------------------
     cur.execute("""
         CREATE TABLE IF NOT EXISTS transacciones (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            fecha TEXT NOT NULL,
             username TEXT,
             nombre_usuario TEXT,
             rol TEXT,
@@ -58,7 +55,8 @@ def init_db():
             estado TEXT NOT NULL,
             detalle TEXT,
             archivo_1 TEXT,
-            archivo_2 TEXT
+            archivo_2 TEXT,
+            fecha TEXT NOT NULL
         )
     """)
 
@@ -66,13 +64,10 @@ def init_db():
     conn.close()
 
 
-# ============================================================
-# Usuarios
-# ============================================================
+# ==========================================================
+# USUARIOS
+# ==========================================================
 def registrar_usuario_si_no_existe(username: str, nombre: str = "", rol: str = "usuario"):
-    """
-    Inserta el usuario si no existe. Si ya existe, no falla.
-    """
     if not username:
         return
 
@@ -84,11 +79,11 @@ def registrar_usuario_si_no_existe(username: str, nombre: str = "", rol: str = "
 
     if not existe:
         cur.execute("""
-            INSERT INTO usuarios (username, nombre, rol, activo, fecha_creacion)
+            INSERT INTO usuarios (username, nombre, rol, activo, creado_en)
             VALUES (?, ?, ?, ?, ?)
         """, (
             username,
-            nombre or username,
+            nombre,
             rol or "usuario",
             1,
             datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -99,27 +94,31 @@ def registrar_usuario_si_no_existe(username: str, nombre: str = "", rol: str = "
 
 
 def obtener_usuario(username: str):
-    if not username:
-        return None
-
     conn = get_connection()
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT *
+        SELECT id, username, nombre, rol, activo, creado_en
         FROM usuarios
         WHERE username = ?
     """, (username,))
     row = cur.fetchone()
     conn.close()
 
-    return dict(row) if row else None
+    if not row:
+        return None
+
+    return {
+        "id": row[0],
+        "username": row[1],
+        "nombre": row[2],
+        "rol": row[3],
+        "activo": row[4],
+        "creado_en": row[5],
+    }
 
 
 def actualizar_rol_usuario(username: str, nuevo_rol: str):
-    """
-    Cambia el rol de un usuario.
-    """
     conn = get_connection()
     cur = conn.cursor()
 
@@ -133,21 +132,25 @@ def actualizar_rol_usuario(username: str, nuevo_rol: str):
     conn.close()
 
 
-def listar_usuarios() -> pd.DataFrame:
+def listar_usuarios():
     conn = get_connection()
-    query = """
-        SELECT id, username, nombre, rol, activo, fecha_creacion
+    df = pd.read_sql_query("""
+        SELECT
+            username AS "username",
+            nombre AS "Nombre",
+            rol AS "Rol",
+            activo AS "Activo",
+            creado_en AS "Creado en"
         FROM usuarios
-        ORDER BY nombre ASC
-    """
-    df = pd.read_sql_query(query, conn)
+        ORDER BY creado_en DESC
+    """, conn)
     conn.close()
     return df
 
 
-# ============================================================
-# Transacciones
-# ============================================================
+# ==========================================================
+# TRANSACCIONES
+# ==========================================================
 def registrar_transaccion(
     modulo: str,
     accion: str,
@@ -157,17 +160,17 @@ def registrar_transaccion(
     archivo_2: str = "",
     username: str = "",
     nombre_usuario: str = "",
-    rol: str = ""
+    rol: str = "usuario"
 ):
     """
-    Registra un evento / transacción del sistema.
+    Registra una transacción del sistema.
+    Compatible con los módulos Diagnóstico / Auditoría / XML.
     """
     conn = get_connection()
     cur = conn.cursor()
 
     cur.execute("""
         INSERT INTO transacciones (
-            fecha,
             username,
             nombre_usuario,
             rol,
@@ -176,11 +179,11 @@ def registrar_transaccion(
             estado,
             detalle,
             archivo_1,
-            archivo_2
+            archivo_2,
+            fecha
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         username,
         nombre_usuario,
         rol,
@@ -189,36 +192,29 @@ def registrar_transaccion(
         estado,
         detalle,
         archivo_1,
-        archivo_2
+        archivo_2,
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     ))
 
     conn.commit()
     conn.close()
 
 
-def listar_transacciones(
-    usuario: str | None = None,
-    modulo: str | None = None,
-    estado: str | None = None
-) -> pd.DataFrame:
-    """
-    Devuelve el historial de transacciones con filtros opcionales.
-    """
+def listar_transacciones(usuario=None, modulo=None, estado=None):
     conn = get_connection()
 
     query = """
         SELECT
-            id,
-            fecha,
-            username,
-            nombre_usuario,
-            rol,
-            modulo,
-            accion,
-            estado,
-            detalle,
-            archivo_1,
-            archivo_2
+            fecha AS "Fecha",
+            username AS "Usuario",
+            nombre_usuario AS "Nombre",
+            rol AS "Rol",
+            modulo AS "Módulo",
+            accion AS "Acción",
+            estado AS "Estado",
+            detalle AS "Detalle",
+            archivo_1 AS "Archivo 1",
+            archivo_2 AS "Archivo 2"
         FROM transacciones
         WHERE 1=1
     """
@@ -236,82 +232,78 @@ def listar_transacciones(
         query += " AND estado = ?"
         params.append(estado)
 
-    query += " ORDER BY fecha DESC, id DESC"
+    query += " ORDER BY fecha DESC"
 
     df = pd.read_sql_query(query, conn, params=params)
     conn.close()
     return df
 
 
-# ============================================================
-# Métricas admin
-# ============================================================
-def obtener_resumen_admin() -> dict:
-    """
-    Devuelve KPIs generales para el panel administrativo.
-    """
+# ==========================================================
+# PANEL ADMIN
+# ==========================================================
+def obtener_resumen_admin():
     conn = get_connection()
     cur = conn.cursor()
 
-    def scalar(query: str):
-        cur.execute(query)
-        row = cur.fetchone()
-        return row[0] if row and row[0] is not None else 0
+    # usuarios
+    cur.execute("SELECT COUNT(*) FROM usuarios")
+    usuarios = cur.fetchone()[0]
 
-    resumen = {
-        "usuarios": scalar("SELECT COUNT(*) FROM usuarios WHERE activo = 1"),
-        "transacciones": scalar("SELECT COUNT(*) FROM transacciones"),
-        "diagnosticos": scalar("""
-            SELECT COUNT(*)
-            FROM transacciones
-            WHERE modulo = 'Diagnóstico'
-        """),
-        "auditorias": scalar("""
-            SELECT COUNT(*)
-            FROM transacciones
-            WHERE modulo = 'Auditoría'
-        """),
-        "xml_generados": scalar("""
-            SELECT COUNT(*)
-            FROM transacciones
-            WHERE modulo = 'Generar XML'
-        """),
-        "errores": scalar("""
-            SELECT COUNT(*)
-            FROM transacciones
-            WHERE estado = 'ERROR'
-        """)
-    }
+    # transacciones
+    cur.execute("SELECT COUNT(*) FROM transacciones")
+    transacciones = cur.fetchone()[0]
+
+    # por módulo
+    cur.execute("SELECT COUNT(*) FROM transacciones WHERE modulo = 'Diagnóstico'")
+    diagnosticos = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM transacciones WHERE modulo = 'Auditoría'")
+    auditorias = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM transacciones WHERE modulo = 'Generar XML'")
+    xml_generados = cur.fetchone()[0]
+
+    # errores
+    cur.execute("SELECT COUNT(*) FROM transacciones WHERE estado = 'ERROR'")
+    errores = cur.fetchone()[0]
 
     conn.close()
-    return resumen
+
+    return {
+        "usuarios": usuarios,
+        "transacciones": transacciones,
+        "diagnosticos": diagnosticos,
+        "auditorias": auditorias,
+        "xml_generados": xml_generados,
+        "errores": errores,
+    }
 
 
-def obtener_uso_por_modulo() -> pd.DataFrame:
-    """
-    Agrupa cantidad de transacciones por módulo.
-    """
+def obtener_uso_por_modulo():
     conn = get_connection()
-    query = """
-        SELECT modulo, COUNT(*) AS cantidad
+    df = pd.read_sql_query("""
+        SELECT
+            modulo AS "Módulo",
+            COUNT(*) AS "Cantidad"
         FROM transacciones
         GROUP BY modulo
-        ORDER BY cantidad DESC
-    """
-    df = pd.read_sql_query(query, conn)
+        ORDER BY COUNT(*) DESC
+    """, conn)
     conn.close()
     return df
 
 
-def obtener_errores_por_modulo() -> pd.DataFrame:
+def obtener_errores_por_modulo():
     conn = get_connection()
-    query = """
-        SELECT modulo, COUNT(*) AS cantidad
+    df = pd.read_sql_query("""
+        SELECT
+            modulo AS "Módulo",
+            COUNT(*) AS "Errores"
         FROM transacciones
         WHERE estado = 'ERROR'
         GROUP BY modulo
-        ORDER BY cantidad DESC
-    """
-    df = pd.read_sql_query(query, conn)
+        ORDER BY COUNT(*) DESC
+    """, conn)
     conn.close()
     return df
