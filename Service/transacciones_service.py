@@ -118,19 +118,38 @@ def obtener_usuario(username: str):
     }
 
 
-def actualizar_rol_usuario(username: str, nuevo_rol: str):
+def actualizar_rol_usuario(username_a_cambiar: str, nuevo_rol: str, username_operador: str):
+    """
+    Actualiza el rol de un usuario. 
+    Solo un 'superadministrador' puede promover a alguien a 'administrador' o 'superadministrador'.
+    """
     conn = get_connection()
     cur = conn.cursor()
 
+    # 1. Obtener el rol de la persona que está ejecutando la acción
+    cur.execute("SELECT rol FROM usuarios WHERE username = ?", (username_operador,))
+    row_operador = cur.fetchone()
+    rol_operador = row_operador[0] if row_operador else None
+
+    # 2. Validar restricción: Si el nuevo rol es 'administrador' o 'superadministrador',
+    # el operador OBLIGATORIAMENTE debe ser 'superadministrador'.
+    if nuevo_rol in ["administrador", "superadministrador"]:
+        if rol_operador != "superadministrador":
+            conn.close()
+            raise PermissionError(
+                f"Acción denegada: El usuario '{username_operador}' no tiene permisos de "
+                f"superadministrador para asignar el rol '{nuevo_rol}'."
+            )
+
+    # 3. Si pasa la validación, se actualiza en la base de datos
     cur.execute("""
         UPDATE usuarios
         SET rol = ?
         WHERE username = ?
-    """, (nuevo_rol, username))
+    """, (nuevo_rol, username_a_cambiar))
 
     conn.commit()
     conn.close()
-
 
 def listar_usuarios():
     conn = get_connection()
