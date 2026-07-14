@@ -6,8 +6,13 @@ from datetime import datetime
 # ==========================================================
 # RUTA DB
 # ==========================================================
-DB_PATH = Path("/workspaces/exogena_app/data/app.db")
-DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = BASE_DIR / "data"
+
+# Creamos la carpeta 'data' de forma segura dentro del proyecto
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+DB_PATH = DATA_DIR / "app.db"
 # ==========================================================
 # CONEXIÓN
 # ==========================================================
