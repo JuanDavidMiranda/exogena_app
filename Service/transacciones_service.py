@@ -28,13 +28,14 @@ def init_db():
     cur = conn.cursor()
 
     # --------------------------
-    # Tabla usuarios
+    # Tabla usuarios (Actualizada con password_hash)
     # --------------------------
     cur.execute("""
         CREATE TABLE IF NOT EXISTS usuarios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             nombre TEXT,
+            password_hash TEXT,
             rol TEXT DEFAULT 'usuario',
             activo INTEGER DEFAULT 1,
             creado_en TEXT
@@ -67,7 +68,7 @@ def init_db():
 # ==========================================================
 # USUARIOS
 # ==========================================================
-def registrar_usuario_si_no_existe(username: str, nombre: str = "", rol: str = "usuario"):
+def registrar_usuario_si_no_existe(username: str, nombre: str = "", password_hash: str = "", rol: str = "usuario"):
     if not username:
         return
 
@@ -79,11 +80,12 @@ def registrar_usuario_si_no_existe(username: str, nombre: str = "", rol: str = "
 
     if not existe:
         cur.execute("""
-            INSERT INTO usuarios (username, nombre, rol, activo, creado_en)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO usuarios (username, nombre, password_hash, rol, activo, creado_en)
+            VALUES (?, ?, ?, ?, ?, ?)
         """, (
             username,
             nombre,
+            password_hash,
             rol or "usuario",
             1,
             datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -97,8 +99,9 @@ def obtener_usuario(username: str):
     conn = get_connection()
     cur = conn.cursor()
 
+    # Agregamos password_hash a la consulta select
     cur.execute("""
-        SELECT id, username, nombre, rol, activo, creado_en
+        SELECT id, username, nombre, rol, activo, creado_en, password_hash
         FROM usuarios
         WHERE username = ?
     """, (username,))
@@ -115,8 +118,8 @@ def obtener_usuario(username: str):
         "rol": row[3],
         "activo": row[4],
         "creado_en": row[5],
+        "password_hash": row[6], # Guardamos el hash para validarlo en el login
     }
-
 
 def actualizar_rol_usuario(username_a_cambiar: str, nuevo_rol: str, username_operador: str):
     """
