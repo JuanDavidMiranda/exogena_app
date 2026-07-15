@@ -31,6 +31,7 @@ from Ui.Pages.login_page import render_login_page
 from Ui.Pages.diagnostico_page import render_diagnostico_page
 from Ui.Pages.auditoria_page import render_auditoria_page
 from Ui.Pages.xml_page import render_xml_page
+from Ui.Pages.db_page import render_db_page
 from Service.auth_service import inicializar_sesion, usuario_autenticado
 from Ui.Pages.dashboard import render_dashboard
 from Service.transacciones_service import init_db, DB_PATH
@@ -82,6 +83,9 @@ elif opcion == "Comparar Excel Dian vs Novasoft":
 
 elif opcion == "Generar XML para la DIAN":
     render_xml_page()
+
+elif opcion == "Ver usuarios DB":
+    render_db_page()
 
 elif opcion == "Panel Administrativo":
     render_admin_page()
