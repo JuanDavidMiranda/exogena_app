@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 import sqlite3
 import pandas as pd
 from datetime import datetime
@@ -9,10 +10,11 @@ from datetime import datetime
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
 
-# Creamos la carpeta 'data' de forma segura dentro del proyecto
-DATA_DIR.mkdir(parents=True, exist_ok=True)
+# Si no se configura la ruta de la base de datos, usamos data/app.db por defecto.
+DB_PATH = Path(os.getenv("EXOGENA_DB_PATH", DATA_DIR / "app.db"))
+DB_PATH = DB_PATH if DB_PATH.is_absolute() else (BASE_DIR / DB_PATH)
+DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-DB_PATH = DATA_DIR / "app.db"
 # ==========================================================
 # CONEXIÓN
 # ==========================================================
