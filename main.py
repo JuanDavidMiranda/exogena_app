@@ -88,8 +88,5 @@ elif opcion == "Mi historial":
 elif opcion == "Generar XML para la DIAN":
     render_xml_page()
 
-elif opcion == "Ver usuarios DB":
-    render_db_page()
-
 elif opcion == "Panel Administrativo":
     render_admin_page()
