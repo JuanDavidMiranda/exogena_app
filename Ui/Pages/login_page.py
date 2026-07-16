@@ -7,17 +7,47 @@ def render_login_page():
     st.markdown(
         """
         <style>
+            html, body, #root, .stApp,
+            div.block-container,
+            div.block-container > div,
+            div[data-testid="stAppViewContainer"],
+            div[data-testid="main"] > div,
+            section.main,
+            div.css-1lcbmhc.e1fqkh3o2,
+            div.css-1v3fvcr {
+                padding-top: 0 !important;
+                margin-top: 0 !important;
+                min-height: 100% !important;
+            }
+
             div.block-container {
                 padding-top: 0 !important;
-            }
-            .stApp {
                 margin-top: 0 !important;
             }
+
+            .stApp {
+                margin-top: 0 !important;
+                padding-top: 0 !important;
+            }
+
+            header[data-testid="stHeader"],
+            div[data-testid="stToolbar"],
             section[data-testid="stSidebar"] {
                 display: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                height: 0 !important;
+                visibility: hidden !important;
             }
-            header[data-testid="stHeader"] {
-                display: none !important;
+
+            .login-page-shell {
+                position: absolute !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                min-height: 100vh !important;
+                margin: 0 !important;
+                padding: 0 !important;
             }
         </style>
         """,
