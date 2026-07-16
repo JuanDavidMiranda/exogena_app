@@ -274,8 +274,8 @@ def load_global_styles():
     min-height: calc(100vh - 1rem);
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    padding: 0 0 0.6rem 0 !important;
+    justify-content: flex-start;
+    padding: 0.4rem 0 0.6rem 0 !important;
     margin: 0 !important;
     }
 
@@ -342,9 +342,10 @@ def load_global_styles():
     background: rgba(255,255,255,0.78);
     border: 1px solid #e2e8f0;
     border-radius: 24px;
-    padding: 0.9rem;
+    padding: 0.6rem;
     box-shadow: 0 18px 45px rgba(15, 23, 42, 0.10);
     backdrop-filter: blur(8px);
+    margin-top: 0 !important;
     }
 
     .login-brand-panel {
