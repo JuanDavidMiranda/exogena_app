@@ -224,7 +224,7 @@ def registrar_transaccion(
     conn.close()
 
 
-def listar_transacciones(usuario=None, modulo=None, estado=None):
+def listar_transacciones(usuario=None, modulo=None, estado=None, fecha_inicio=None, fecha_fin=None, archivo=None):
     conn = get_connection()
 
     query = """
@@ -255,6 +255,18 @@ def listar_transacciones(usuario=None, modulo=None, estado=None):
     if estado:
         query += " AND estado = ?"
         params.append(estado)
+
+    if fecha_inicio:
+        query += " AND date(fecha) >= date(?)"
+        params.append(fecha_inicio)
+
+    if fecha_fin:
+        query += " AND date(fecha) <= date(?)"
+        params.append(fecha_fin)
+
+    if archivo:
+        query += " AND (archivo_1 LIKE ? OR archivo_2 LIKE ?)"
+        params.extend([f"%{archivo}%", f"%{archivo}%"])
 
     query += " ORDER BY fecha DESC"
 
