@@ -42,6 +42,7 @@ def render_sidebar():
             "Diagnóstico Preliminar de Formatos",
             "Comparar Excel Dian vs Novasoft",
             "Generar XML para la DIAN",
+            "Mi historial",
             "Ver usuarios DB",
         ]
 

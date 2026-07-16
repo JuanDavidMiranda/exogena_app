@@ -36,6 +36,7 @@ from Service.auth_service import inicializar_sesion, usuario_autenticado
 from Ui.Pages.dashboard import render_dashboard
 from Service.transacciones_service import init_db, DB_PATH
 from Ui.Pages.admin_page import render_admin_page
+from Ui.Pages.historial_page import render_historial_page
 # ==========================================
 # CONFIGURACIÓN DE LA APP
 # ==========================================
@@ -80,6 +81,9 @@ elif opcion == "Diagnóstico Preliminar de Formatos":
 
 elif opcion == "Comparar Excel Dian vs Novasoft":
     render_auditoria_page()
+
+elif opcion == "Mi historial":
+    render_historial_page()
 
 elif opcion == "Generar XML para la DIAN":
     render_xml_page()
