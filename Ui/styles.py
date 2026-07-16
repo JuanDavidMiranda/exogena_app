@@ -275,13 +275,17 @@ def load_global_styles():
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 0 0 0.6rem 0;
-    margin-top: -0.4rem;
+    padding: 0 0 0.6rem 0 !important;
+    margin: 0 !important;
     }
 
     .login-page-header {
     text-align: center;
-    margin-bottom: 0.8rem;
+    margin: 0 0 0.8rem 0;
+    }
+
+    .login-layout-card {
+        margin-top: 0 !important;
     }
 
     .login-logo-wrap {
