@@ -271,16 +271,39 @@ def load_global_styles():
        LOGIN PROFESIONAL
     ========================================================= */
     .login-page-shell {
-    min-height: calc(100vh - 2rem);
+    min-height: calc(100vh - 1rem);
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 0.2rem 0 0.8rem 0;
+    padding: 0 0 0.6rem 0;
+    margin-top: -0.4rem;
     }
 
     .login-page-header {
     text-align: center;
     margin-bottom: 0.8rem;
+    }
+
+    .login-logo-wrap {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.9rem;
+        margin-bottom: 0.4rem;
+    }
+
+    .login-logo-mark {
+        width: 54px;
+        height: 54px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.05rem;
+        font-weight: 800;
+        box-shadow: 0 8px 24px rgba(37, 99, 235, 0.25);
     }
 
     .login-page-badge {
@@ -299,7 +322,7 @@ def load_global_styles():
     color: #0f172a;
     font-size: 1.6rem;
     font-weight: 800;
-    margin-bottom: 0.35rem;
+    margin-bottom: 0.2rem;
     letter-spacing: -0.3px;
     }
 
@@ -329,13 +352,31 @@ def load_global_styles():
         font-size: 2rem;
         font-weight: 800;
         margin-bottom: 0.7rem;
+        letter-spacing: -0.4px;
     }
 
     .login-brand-subtitle {
         color: #dbeafe;
         font-size: 1rem;
         line-height: 1.75;
-        margin-bottom: 1.4rem;
+        margin-bottom: 1rem;
+    }
+
+    .login-brand-highlight {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+        margin-bottom: 1rem;
+    }
+
+    .login-brand-highlight span {
+        background: rgba(255,255,255,0.14);
+        border: 1px solid rgba(255,255,255,0.16);
+        border-radius: 999px;
+        padding: 0.42rem 0.75rem;
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: white;
     }
 
     .login-feature-box {
@@ -406,14 +447,20 @@ def load_global_styles():
     background: #ffffff;
     border: 1px solid #e5e7eb;
     border-radius: 24px;
-    padding: 1rem 1rem 0.9rem 1rem;
+    padding: 1.1rem 1.1rem 1rem 1.1rem;
     box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+    }
+
+    .login-input-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
     }
 
     .login-mini-help {
         margin-top: 0.9rem;
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
+        background: linear-gradient(90deg, #f8fafc 0%, #eef4ff 100%);
+        border: 1px solid #dbeafe;
         border-radius: 14px;
         padding: 0.85rem 0.95rem;
         color: #475569;

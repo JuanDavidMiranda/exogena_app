@@ -9,10 +9,15 @@ def render_login_page():
     st.markdown("""
     <div class="login-page-header">
         <div class="login-page-badge">🔐 Acceso seguro</div>
-        <h1>Plataforma de Información Exógena</h1>
-        <p>
-            Inicia sesión o crea una cuenta para acceder al sistema.
-        </p>
+        <div class="login-logo-wrap">
+            <div class="login-logo-mark">EX</div>
+            <div>
+                <h1>Plataforma de Información Exógena</h1>
+                <p>
+                    Inicia sesión o crea una cuenta para acceder al sistema con una experiencia más clara, segura y profesional.
+                </p>
+            </div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -30,6 +35,11 @@ def render_login_page():
                 <div class="login-brand-subtitle">
                     Una solución pensada para apoyar la gestión de información exógena
                     con un flujo más claro, organizado y profesional.
+                </div>
+                <div class="login-brand-highlight">
+                    <span>⚡ Automatización</span>
+                    <span>🧠 Trazabilidad</span>
+                    <span>🔐 Seguridad</span>
                 </div>
 
                 <div class="login-feature-box">
@@ -65,7 +75,7 @@ def render_login_page():
             <div class="login-form-panel">
                 <div class="login-form-header">
                     <h2>Bienvenido</h2>
-                    <p>Ingresa con tus credenciales o crea tu cuenta</p>
+                    <p>Ingresa con tus credenciales o crea tu cuenta para continuar</p>
                 </div>
             </div>
         """, unsafe_allow_html=True)
@@ -79,8 +89,10 @@ def render_login_page():
         # ==========================================
         with tab1:
             st.markdown("### Iniciar sesión")
+            st.markdown('<div class="login-input-group">', unsafe_allow_html=True)
             username_login = st.text_input("Usuario", key="login_user")
             password_login = st.text_input("Contraseña", type="password", key="login_pass")
+            st.markdown('</div>', unsafe_allow_html=True)
 
             if st.button("Ingresar al sistema", key="btn_login", use_container_width=True):
                 try:
@@ -102,10 +114,12 @@ def render_login_page():
         # ==========================================
         with tab2:
             st.markdown("### Crear cuenta")
+            st.markdown('<div class="login-input-group">', unsafe_allow_html=True)
             nombre = st.text_input("Nombre completo", key="reg_nombre")
             username = st.text_input("Nombre de usuario", key="reg_user")
             password = st.text_input("Contraseña", type="password", key="reg_pass")
             confirm_password = st.text_input("Confirmar contraseña", type="password", key="reg_pass2")
+            st.markdown('</div>', unsafe_allow_html=True)
 
             if st.button("Crear usuario", key="btn_register", use_container_width=True):
                 try:
