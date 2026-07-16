@@ -4,22 +4,28 @@ from Ui.components import status_box
 
 
 def render_login_page():
-    st.markdown('<div class="login-page-shell">', unsafe_allow_html=True)
+    st.markdown(
+        """
+        <style>
+            div.block-container {
+                padding-top: 0 !important;
+            }
+            .stApp {
+                margin-top: 0 !important;
+            }
+            section[data-testid="stSidebar"] {
+                display: none !important;
+            }
+            header[data-testid="stHeader"] {
+                display: none !important;
+            }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    st.markdown("""
-    <div class="login-page-header">
-        <div class="login-page-badge">🔐 Acceso seguro</div>
-        <div class="login-logo-wrap">
-            <div class="login-logo-mark">EX</div>
-            <div>
-                <h1>Plataforma de Información Exógena</h1>
-                <p>
-                    Inicia sesión o crea una cuenta para acceder al sistema con una experiencia más clara, segura y profesional.
-                </p>
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('<div class="login-page-shell">', unsafe_allow_html=True)
+    st.markdown("""<div class="login-page-header"><div class="login-page-badge">🔐 Acceso seguro</div><div class="login-logo-wrap"><div class="login-logo-mark">EX</div><div><h1>Plataforma de Información Exógena</h1><p>Inicia sesión o crea una cuenta para acceder al sistema con una experiencia más clara, segura y profesional.</p></div></div></div>""", unsafe_allow_html=True)
 
     st.markdown('<div class="login-layout-card">', unsafe_allow_html=True)
 

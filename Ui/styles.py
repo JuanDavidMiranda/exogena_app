@@ -275,8 +275,10 @@ def load_global_styles():
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    padding: 0.4rem 0 0.6rem 0 !important;
+    padding: 0 !important;
     margin: 0 !important;
+    position: relative;
+    top: -1rem;
     }
 
     .login-page-header {
