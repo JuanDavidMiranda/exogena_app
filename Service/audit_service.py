@@ -125,16 +125,100 @@ def leer_archivo_tabular(archivo):
     """
     Lee un archivo Excel/CSV de forma segura.
     """
+    if hasattr(archivo, "seek"):
+        try:
+            archivo.seek(0)
+        except Exception:
+            pass
+
     nombre = getattr(archivo, "name", "").lower()
 
     if nombre.endswith(".csv"):
         try:
             return pd.read_csv(archivo)
         except UnicodeDecodeError:
-            archivo.seek(0)
+            if hasattr(archivo, "seek"):
+                try:
+                    archivo.seek(0)
+                except Exception:
+                    pass
             return pd.read_csv(archivo, encoding="latin-1")
 
     return leer_excel_seguro(archivo)
+
+
+def obtener_columnas_disponibles(archivo):
+    """
+    Devuelve la lista de columnas detectadas en un archivo cargado.
+    """
+    df = leer_archivo_tabular(archivo)
+    if df is None or df.empty:
+        return []
+    return [str(col).strip() for col in df.columns if str(col).strip() != ""]
+
+
+def encontrar_columna_por_nombre(df: pd.DataFrame, nombre) -> str | None:
+    """
+    Busca una columna exacta o tolerando diferencias de formato.
+    """
+    if nombre is None:
+        return None
+
+    nombre_str = str(nombre).strip()
+    if nombre_str == "":
+        return None
+
+    columnas_originales = list(df.columns)
+    columnas_map = {str(col).strip(): col for col in columnas_originales}
+
+    if nombre_str in columnas_map:
+        return columnas_map[nombre_str]
+
+    for col in columnas_originales:
+        if normalizar_texto(col) == normalizar_texto(nombre_str):
+            return col
+
+    return None
+
+
+def sugerir_columnas_por_origen(df: pd.DataFrame, origen: str):
+    """
+    Sugerir columnas clave y monto usando heurísticas simples.
+    """
+    origen_norm = normalizar_texto(origen)
+
+    if origen_norm == "novasoft":
+        col_clave = buscar_columna_prioritaria(df, CLAVES_NOVASOFT)
+        col_monto = buscar_columna_prioritaria(df, MONTOS_NOVASOFT)
+    else:
+        col_clave = buscar_columna_prioritaria(df, CLAVES_DIAN)
+        col_monto = buscar_columna_prioritaria(df, MONTOS_DIAN)
+
+    return {
+        "col_clave": col_clave,
+        "col_monto": col_monto,
+    }
+
+
+def analizar_archivos_para_auditoria(archivo_dian, archivo_novasoft):
+    """
+    Devuelve las columnas disponibles y las sugerencias de mapeo para ambos archivos.
+    """
+    df_dian = leer_archivo_tabular(archivo_dian)
+    df_novasoft = leer_archivo_tabular(archivo_novasoft)
+
+    columnas_dian = obtener_columnas_disponibles(archivo_dian)
+    columnas_novasoft = obtener_columnas_disponibles(archivo_novasoft)
+
+    sugerencia_dian = sugerir_columnas_por_origen(df_dian, "DIAN")
+    sugerencia_novasoft = sugerir_columnas_por_origen(df_novasoft, "Novasoft")
+
+    return {
+        "columnas_dian": columnas_dian,
+        "columnas_novasoft": columnas_novasoft,
+        "sugerencia_dian": sugerencia_dian,
+        "sugerencia_novasoft": sugerencia_novasoft,
+    }
 
 
 def limpiar_clave(valor):
@@ -167,7 +251,12 @@ def convertir_monto_a_numero(serie: pd.Series) -> pd.Series:
 # PREPARACIÓN DE DATAFRAMES
 # ============================================================
 
-def preparar_df_para_auditoria(df: pd.DataFrame, origen: str) -> pd.DataFrame:
+def preparar_df_para_auditoria(
+    df: pd.DataFrame,
+    origen: str,
+    col_clave: str | None = None,
+    col_monto: str | None = None,
+) -> pd.DataFrame:
     """
     Estandariza un dataframe para conciliación:
     - detecta columna clave
@@ -178,12 +267,16 @@ def preparar_df_para_auditoria(df: pd.DataFrame, origen: str) -> pd.DataFrame:
 
     origen_norm = normalizar_texto(origen)
 
-    if origen_norm == "novasoft":
-        col_clave = buscar_columna_prioritaria(df, CLAVES_NOVASOFT)
-        col_monto = buscar_columna_prioritaria(df, MONTOS_NOVASOFT)
+    if col_clave is None or col_monto is None:
+        if origen_norm == "novasoft":
+            col_clave = buscar_columna_prioritaria(df, CLAVES_NOVASOFT)
+            col_monto = buscar_columna_prioritaria(df, MONTOS_NOVASOFT)
+        else:
+            col_clave = buscar_columna_prioritaria(df, CLAVES_DIAN)
+            col_monto = buscar_columna_prioritaria(df, MONTOS_DIAN)
     else:
-        col_clave = buscar_columna_prioritaria(df, CLAVES_DIAN)
-        col_monto = buscar_columna_prioritaria(df, MONTOS_DIAN)
+        col_clave = encontrar_columna_por_nombre(df, col_clave)
+        col_monto = encontrar_columna_por_nombre(df, col_monto)
 
     if not col_clave:
         raise ValueError(
@@ -251,7 +344,14 @@ def construir_observacion(row) -> str:
 # SERVICIO PRINCIPAL DE CONCILIACIÓN
 # ============================================================
 
-def ejecutar_auditoria_service(archivo_dian, archivo_novasoft):
+def ejecutar_auditoria_service(
+    archivo_dian,
+    archivo_novasoft,
+    col_clave_dian=None,
+    col_monto_dian=None,
+    col_clave_novasoft=None,
+    col_monto_novasoft=None,
+):
     """
     Realiza conciliación de compras entre archivo DIAN y archivo Novasoft.
 
@@ -292,8 +392,18 @@ def ejecutar_auditoria_service(archivo_dian, archivo_novasoft):
         # ====================================================
         # 2) Preparar dataframes
         # ====================================================
-        df_dian = preparar_df_para_auditoria(df_dian_raw, "DIAN")
-        df_novasoft = preparar_df_para_auditoria(df_novasoft_raw, "Novasoft")
+        df_dian = preparar_df_para_auditoria(
+            df_dian_raw,
+            "DIAN",
+            col_clave=col_clave_dian,
+            col_monto=col_monto_dian,
+        )
+        df_novasoft = preparar_df_para_auditoria(
+            df_novasoft_raw,
+            "Novasoft",
+            col_clave=col_clave_novasoft,
+            col_monto=col_monto_novasoft,
+        )
 
         # ====================================================
         # 3) Consolidar por clave

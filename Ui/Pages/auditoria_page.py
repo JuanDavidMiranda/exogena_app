@@ -2,7 +2,10 @@ import io
 import pandas as pd
 import streamlit as st
 
-from Service.audit_service import ejecutar_auditoria_service
+from Service.audit_service import (
+    analizar_archivos_para_auditoria,
+    ejecutar_auditoria_service,
+)
 from Ui.components import section_header, kpi_card, status_box, soft_divider
 from Service.transacciones_service import registrar_transaccion
 
@@ -41,10 +44,84 @@ def render_auditoria_page():
 
     st.markdown("")
 
+    try:
+        analisis = analizar_archivos_para_auditoria(archivo_dian, archivo_novasoft)
+    except Exception as e:
+        st.warning(f"No fue posible analizar automáticamente los archivos: {e}")
+        analisis = {"columnas_dian": [], "columnas_novasoft": [], "sugerencia_dian": {}, "sugerencia_novasoft": {}}
+
+    st.markdown("### 🧠 Configuración inteligente de columnas")
+    st.info(
+        "El sistema lee ambos archivos, detecta sus columnas y te permite elegir qué campo usar como identificador y qué campo usar para comparar montos."
+    )
+
+    col_dian_cfg, col_nova_cfg = st.columns(2)
+
+    with col_dian_cfg:
+        st.markdown("**Columnas detectadas - DIAN**")
+        if analisis["columnas_dian"]:
+            st.dataframe(
+                pd.DataFrame({"Columnas": analisis["columnas_dian"]}),
+                hide_index=True,
+                width="stretch",
+            )
+        else:
+            st.caption("No se detectaron columnas útiles en el archivo DIAN.")
+
+        col_clave_dian = st.selectbox(
+            "Columna para identificar tercero (DIAN)",
+            options=analisis["columnas_dian"] or ["No disponible"],
+            index=0 if analisis["columnas_dian"] else 0,
+            key="col_clave_dian",
+        )
+        col_monto_dian = st.selectbox(
+            "Columna para comparar montos (DIAN)",
+            options=analisis["columnas_dian"] or ["No disponible"],
+            index=0 if analisis["columnas_dian"] else 0,
+            key="col_monto_dian",
+        )
+
+    with col_nova_cfg:
+        st.markdown("**Columnas detectadas - Novasoft**")
+        if analisis["columnas_novasoft"]:
+            st.dataframe(
+                pd.DataFrame({"Columnas": analisis["columnas_novasoft"]}),
+                hide_index=True,
+                width="stretch",
+            )
+        else:
+            st.caption("No se detectaron columnas útiles en el archivo Novasoft.")
+
+        col_clave_novasoft = st.selectbox(
+            "Columna para identificar tercero (Novasoft)",
+            options=analisis["columnas_novasoft"] or ["No disponible"],
+            index=0 if analisis["columnas_novasoft"] else 0,
+            key="col_clave_novasoft",
+        )
+        col_monto_novasoft = st.selectbox(
+            "Columna para comparar montos (Novasoft)",
+            options=analisis["columnas_novasoft"] or ["No disponible"],
+            index=0 if analisis["columnas_novasoft"] else 0,
+            key="col_monto_novasoft",
+        )
+
+    if not analisis["columnas_dian"] or not analisis["columnas_novasoft"]:
+        st.warning("No fue posible leer columnas válidas en uno de los archivos. Revisa el formato o intenta con otro archivo.")
+        return
+
+    st.markdown("")
+
     if st.button("📊 Ejecutar conciliación", width="stretch"):
         try:
             # OJO: tu service recibe primero DIAN y luego Novasoft
-            resultado = ejecutar_auditoria_service(archivo_dian, archivo_novasoft)
+            resultado = ejecutar_auditoria_service(
+                archivo_dian,
+                archivo_novasoft,
+                col_clave_dian=col_clave_dian if col_clave_dian != "No disponible" else None,
+                col_monto_dian=col_monto_dian if col_monto_dian != "No disponible" else None,
+                col_clave_novasoft=col_clave_novasoft if col_clave_novasoft != "No disponible" else None,
+                col_monto_novasoft=col_monto_novasoft if col_monto_novasoft != "No disponible" else None,
+            )
 
             if not resultado.get("ok"):
                 registrar_transaccion(
