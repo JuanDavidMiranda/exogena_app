@@ -43,7 +43,6 @@ def render_sidebar():
             "Comparar Excel Dian vs Novasoft",
             "Generar XML para la DIAN",
             "Mi historial",
-            "Ver usuarios DB",
         ]
 
         # Solo admins ven el panel administrativo
