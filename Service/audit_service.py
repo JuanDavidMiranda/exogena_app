@@ -344,6 +344,24 @@ def construir_observacion(row) -> str:
 # SERVICIO PRINCIPAL DE CONCILIACIÓN
 # ============================================================
 
+def aplicar_formato_monedas(df: pd.DataFrame, columnas: list[str]) -> pd.DataFrame:
+    """
+    Convierte columnas numéricas a texto con formato de moneda para facilitar la lectura.
+    """
+    resultado = df.copy()
+    for columna in columnas:
+        if columna in resultado.columns:
+            resultado[columna] = pd.to_numeric(resultado[columna], errors="coerce").fillna(0)
+            resultado[columna] = resultado[columna].apply(
+                lambda valor: (
+                    f"-${abs(valor):,.2f}" if pd.notna(valor) and valor < 0 else f"${valor:,.2f}"
+                )
+                if pd.notna(valor)
+                else "$0.00"
+            )
+    return resultado
+
+
 def ejecutar_auditoria_service(
     archivo_dian,
     archivo_novasoft,
@@ -502,6 +520,11 @@ def ejecutar_auditoria_service(
             "Diferencia": "🟠 Diferencia"
         })
 
+        detalle = aplicar_formato_monedas(
+            detalle,
+            ["Valor DIAN", "Valor Novasoft", "Diferencia"],
+        )
+
         def formatear_subtabla(df_sub: pd.DataFrame) -> pd.DataFrame:
             if df_sub.empty:
                 return pd.DataFrame(columns=[
@@ -527,6 +550,7 @@ def ejecutar_auditoria_service(
                 "Diferencia",
                 "Observación"
             ]
+            out = aplicar_formato_monedas(out, ["Valor DIAN", "Valor Novasoft", "Diferencia"])
             return out[columnas]
 
         solo_dian_out = formatear_subtabla(solo_dian)
