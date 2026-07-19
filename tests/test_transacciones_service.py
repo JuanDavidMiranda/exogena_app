@@ -33,3 +33,12 @@ def test_listar_transacciones_filtra_por_usuario(monkeypatch, tmp_path):
     assert len(historial) == 1
     assert historial.iloc[0]["Usuario"] == "ana"
     assert historial.iloc[0]["Detalle"] == "Proceso 1"
+
+
+def test_prepare_sql_usa_percent_s_en_postgres(monkeypatch):
+    monkeypatch.setenv("EXOGENA_DB_BACKEND", "postgres")
+    monkeypatch.setattr(ts, "DB_BACKEND", "postgres", raising=False)
+
+    sql = ts.prepare_sql("SELECT id FROM usuarios WHERE username = ?")
+
+    assert sql == "SELECT id FROM usuarios WHERE username = %s"

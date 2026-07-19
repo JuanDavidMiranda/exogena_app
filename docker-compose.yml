@@ -6,6 +6,9 @@ services:
     ports:
       - "8501:8501"
     volumes:
-      - ./data:/app/data
+      - db_data:/app/data
     environment:
       - EXOGENA_DB_PATH=/app/data/app.db
+
+volumes:
+  db_data:

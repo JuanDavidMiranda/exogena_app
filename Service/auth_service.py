@@ -34,7 +34,7 @@ def verify_password(password: str, stored_hash: str) -> bool:
         return False
 
 # ==========================================================
-# SERVICIOS DE AUTENTICACIÓN DIRECTOS EN SQLITE
+# SERVICIOS DE AUTENTICACIÓN
 # ==========================================================
 def inicializar_sesion():
     if "authenticated" not in st.session_state:
@@ -52,7 +52,7 @@ def registrar_usuario_service(nombre, username, password, confirm_password):
 
     username_clean = username.strip().lower()
     
-    # Validar si ya existe directamente en SQLite
+    # Validar si ya existe directamente en la base de datos
     if obtener_usuario(username_clean) is not None:
         raise ValueError("El usuario ya existe en el sistema. Elige otro.")
 
@@ -72,7 +72,7 @@ def login_service(username, password):
 
     username_clean = username.strip().lower()
     
-    # Consultar datos directo de SQLite
+    # Consultar datos directo de la base de datos
     usuario_db = obtener_usuario(username_clean)
     
     if not usuario_db or not usuario_db.get("password_hash"):
@@ -82,7 +82,7 @@ def login_service(username, password):
     if not verify_password(password, usuario_db["password_hash"]):
         raise ValueError("Contraseña incorrecta.")
 
-    # Guardar sesión activa con el rol real de SQLite
+    # Guardar sesión activa con el rol real de la base de datos
     user_info = {
         "username": usuario_db["username"],
         "nombre": usuario_db["nombre"],

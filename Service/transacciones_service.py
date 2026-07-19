@@ -4,21 +4,56 @@ import sqlite3
 import pandas as pd
 from datetime import datetime
 
+try:
+    import psycopg2
+except Exception:  # pragma: no cover
+    psycopg2 = None
+
 # ==========================================================
 # RUTA DB
 # ==========================================================
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
-
-# Si no se configura la ruta de la base de datos, usamos data/app.db por defecto.
+DB_BACKEND = os.getenv("EXOGENA_DB_BACKEND", "sqlite").strip().lower()
 DB_PATH = Path(os.getenv("EXOGENA_DB_PATH", DATA_DIR / "app.db"))
 DB_PATH = DB_PATH if DB_PATH.is_absolute() else (BASE_DIR / DB_PATH)
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+DB_URL = os.getenv("EXOGENA_DB_URL", "").strip()
+DB_HOST = os.getenv("EXOGENA_DB_HOST", "").strip()
+DB_PORT = os.getenv("EXOGENA_DB_PORT", "5432").strip()
+DB_NAME = os.getenv("EXOGENA_DB_NAME", "").strip()
+DB_USER = os.getenv("EXOGENA_DB_USER", "").strip()
+DB_PASSWORD = os.getenv("EXOGENA_DB_PASSWORD", "").strip()
+
+# ==========================================================
+# FUNCIONES DE ADAPTACIÓN SQL
+# ==========================================================
+def prepare_sql(query: str) -> str:
+    if DB_BACKEND == "postgres":
+        return query.replace("?", "%s")
+    return query
+
 
 # ==========================================================
 # CONEXIÓN
 # ==========================================================
 def get_connection():
+    if DB_BACKEND == "postgres":
+        if psycopg2 is None:
+            raise RuntimeError("psycopg2 no está instalado. Agrega psycopg2-binary al proyecto.")
+        if not DB_URL:
+            if not all([DB_HOST, DB_NAME, DB_USER, DB_PASSWORD]):
+                raise RuntimeError(
+                    "Para PostgreSQL necesitas EXOGENA_DB_URL o las variables "
+                    "EXOGENA_DB_HOST, EXOGENA_DB_NAME, EXOGENA_DB_USER y EXOGENA_DB_PASSWORD."
+                )
+            DB_URL = (
+                f"host={DB_HOST} port={DB_PORT} dbname={DB_NAME} "
+                f"user={DB_USER} password={DB_PASSWORD}"
+            )
+        return psycopg2.connect(DB_URL)
+
     return sqlite3.connect(str(DB_PATH))
 
 
@@ -29,39 +64,62 @@ def init_db():
     conn = get_connection()
     cur = conn.cursor()
 
-    # --------------------------
-    # Tabla usuarios (Actualizada con password_hash)
-    # --------------------------
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS usuarios (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            nombre TEXT,
-            password_hash TEXT,
-            rol TEXT DEFAULT 'usuario',
-            activo INTEGER DEFAULT 1,
-            creado_en TEXT
-        )
-    """)
+    if DB_BACKEND == "postgres":
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id BIGSERIAL PRIMARY KEY,
+                username TEXT UNIQUE NOT NULL,
+                nombre TEXT,
+                password_hash TEXT,
+                rol TEXT DEFAULT 'usuario',
+                activo INTEGER DEFAULT 1,
+                creado_en TEXT
+            )
+        """)
 
-    # --------------------------
-    # Tabla transacciones
-    # --------------------------
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS transacciones (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT,
-            nombre_usuario TEXT,
-            rol TEXT,
-            modulo TEXT NOT NULL,
-            accion TEXT NOT NULL,
-            estado TEXT NOT NULL,
-            detalle TEXT,
-            archivo_1 TEXT,
-            archivo_2 TEXT,
-            fecha TEXT NOT NULL
-        )
-    """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS transacciones (
+                id BIGSERIAL PRIMARY KEY,
+                username TEXT,
+                nombre_usuario TEXT,
+                rol TEXT,
+                modulo TEXT NOT NULL,
+                accion TEXT NOT NULL,
+                estado TEXT NOT NULL,
+                detalle TEXT,
+                archivo_1 TEXT,
+                archivo_2 TEXT,
+                fecha TEXT NOT NULL
+            )
+        """)
+    else:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                nombre TEXT,
+                password_hash TEXT,
+                rol TEXT DEFAULT 'usuario',
+                activo INTEGER DEFAULT 1,
+                creado_en TEXT
+            )
+        """)
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS transacciones (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT,
+                nombre_usuario TEXT,
+                rol TEXT,
+                modulo TEXT NOT NULL,
+                accion TEXT NOT NULL,
+                estado TEXT NOT NULL,
+                detalle TEXT,
+                archivo_1 TEXT,
+                archivo_2 TEXT,
+                fecha TEXT NOT NULL
+            )
+        """)
 
     conn.commit()
     conn.close()
@@ -77,21 +135,24 @@ def registrar_usuario_si_no_existe(username: str, nombre: str = "", password_has
     conn = get_connection()
     cur = conn.cursor()
 
-    cur.execute("SELECT id FROM usuarios WHERE username = ?", (username,))
+    cur.execute(prepare_sql("SELECT id FROM usuarios WHERE username = ?"), (username,))
     existe = cur.fetchone()
 
     if not existe:
-        cur.execute("""
-            INSERT INTO usuarios (username, nombre, password_hash, rol, activo, creado_en)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            username,
-            nombre,
-            password_hash,
-            rol or "usuario",
-            1,
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        ))
+        cur.execute(
+            prepare_sql("""
+                INSERT INTO usuarios (username, nombre, password_hash, rol, activo, creado_en)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """),
+            (
+                username,
+                nombre,
+                password_hash,
+                rol or "usuario",
+                1,
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            )
+        )
         conn.commit()
 
     conn.close()
@@ -101,12 +162,14 @@ def obtener_usuario(username: str):
     conn = get_connection()
     cur = conn.cursor()
 
-    # Agregamos password_hash a la consulta select
-    cur.execute("""
-        SELECT id, username, nombre, rol, activo, creado_en, password_hash
-        FROM usuarios
-        WHERE username = ?
-    """, (username,))
+    cur.execute(
+        prepare_sql("""
+            SELECT id, username, nombre, rol, activo, creado_en, password_hash
+            FROM usuarios
+            WHERE username = ?
+        """),
+        (username,)
+    )
     row = cur.fetchone()
     conn.close()
 
@@ -120,24 +183,22 @@ def obtener_usuario(username: str):
         "rol": row[3],
         "activo": row[4],
         "creado_en": row[5],
-        "password_hash": row[6], # Guardamos el hash para validarlo en el login
+        "password_hash": row[6],
     }
+
 
 def actualizar_rol_usuario(username_a_cambiar: str, nuevo_rol: str, username_operador: str):
     """
-    Actualiza el rol de un usuario. 
+    Actualiza el rol de un usuario.
     Solo un 'superadministrador' puede promover a alguien a 'administrador' o 'superadministrador'.
     """
     conn = get_connection()
     cur = conn.cursor()
 
-    # 1. Obtener el rol de la persona que está ejecutando la acción
-    cur.execute("SELECT rol FROM usuarios WHERE username = ?", (username_operador,))
+    cur.execute(prepare_sql("SELECT rol FROM usuarios WHERE username = ?"), (username_operador,))
     row_operador = cur.fetchone()
     rol_operador = row_operador[0] if row_operador else None
 
-    # 2. Validar restricción: Si el nuevo rol es 'administrador' o 'superadministrador',
-    # el operador OBLIGATORIAMENTE debe ser 'superadministrador'.
     if nuevo_rol in ["administrador", "superadministrador"]:
         if rol_operador != "superadministrador":
             conn.close()
@@ -146,28 +207,34 @@ def actualizar_rol_usuario(username_a_cambiar: str, nuevo_rol: str, username_ope
                 f"superadministrador para asignar el rol '{nuevo_rol}'."
             )
 
-    # 3. Si pasa la validación, se actualiza en la base de datos
-    cur.execute("""
-        UPDATE usuarios
-        SET rol = ?
-        WHERE username = ?
-    """, (nuevo_rol, username_a_cambiar))
+    cur.execute(
+        prepare_sql("""
+            UPDATE usuarios
+            SET rol = ?
+            WHERE username = ?
+        """),
+        (nuevo_rol, username_a_cambiar)
+    )
 
     conn.commit()
     conn.close()
 
+
 def listar_usuarios():
     conn = get_connection()
-    df = pd.read_sql_query("""
-        SELECT
-            username AS "username",
-            nombre AS "Nombre",
-            rol AS "Rol",
-            activo AS "Activo",
-            creado_en AS "Creado en"
-        FROM usuarios
-        ORDER BY creado_en DESC
-    """, conn)
+    df = pd.read_sql_query(
+        prepare_sql("""
+            SELECT
+                username AS "username",
+                nombre AS "Nombre",
+                rol AS "Rol",
+                activo AS "Activo",
+                creado_en AS "Creado en"
+            FROM usuarios
+            ORDER BY creado_en DESC
+        """),
+        conn
+    )
     conn.close()
     return df
 
@@ -193,8 +260,23 @@ def registrar_transaccion(
     conn = get_connection()
     cur = conn.cursor()
 
-    cur.execute("""
-        INSERT INTO transacciones (
+    cur.execute(
+        prepare_sql("""
+            INSERT INTO transacciones (
+                username,
+                nombre_usuario,
+                rol,
+                modulo,
+                accion,
+                estado,
+                detalle,
+                archivo_1,
+                archivo_2,
+                fecha
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """),
+        (
             username,
             nombre_usuario,
             rol,
@@ -204,21 +286,9 @@ def registrar_transaccion(
             detalle,
             archivo_1,
             archivo_2,
-            fecha
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (
-        username,
-        nombre_usuario,
-        rol,
-        modulo,
-        accion,
-        estado,
-        detalle,
-        archivo_1,
-        archivo_2,
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    ))
+    )
 
     conn.commit()
     conn.close()
@@ -270,7 +340,7 @@ def listar_transacciones(usuario=None, modulo=None, estado=None, fecha_inicio=No
 
     query += " ORDER BY fecha DESC"
 
-    df = pd.read_sql_query(query, conn, params=params)
+    df = pd.read_sql_query(prepare_sql(query), conn, params=params)
     conn.close()
     return df
 
@@ -282,22 +352,22 @@ def obtener_resumen_admin():
     conn = get_connection()
     cur = conn.cursor()
 
-    cur.execute("SELECT COUNT(*) FROM usuarios")
+    cur.execute(prepare_sql("SELECT COUNT(*) FROM usuarios"))
     usuarios = cur.fetchone()[0]
 
-    cur.execute("SELECT COUNT(*) FROM transacciones")
+    cur.execute(prepare_sql("SELECT COUNT(*) FROM transacciones"))
     transacciones = cur.fetchone()[0]
 
-    cur.execute("SELECT COUNT(*) FROM transacciones WHERE modulo = 'Diagnóstico'")
+    cur.execute(prepare_sql("SELECT COUNT(*) FROM transacciones WHERE modulo = 'Diagnóstico'"))
     diagnosticos = cur.fetchone()[0]
 
-    cur.execute("SELECT COUNT(*) FROM transacciones WHERE modulo = 'Auditoría'")
+    cur.execute(prepare_sql("SELECT COUNT(*) FROM transacciones WHERE modulo = 'Auditoría'"))
     auditorias = cur.fetchone()[0]
 
-    cur.execute("SELECT COUNT(*) FROM transacciones WHERE modulo = 'Generar XML'")
+    cur.execute(prepare_sql("SELECT COUNT(*) FROM transacciones WHERE modulo = 'Generar XML'"))
     xml_generados = cur.fetchone()[0]
 
-    cur.execute("SELECT COUNT(*) FROM transacciones WHERE estado = 'ERROR'")
+    cur.execute(prepare_sql("SELECT COUNT(*) FROM transacciones WHERE estado = 'ERROR'"))
     errores = cur.fetchone()[0]
 
     conn.close()
@@ -314,28 +384,34 @@ def obtener_resumen_admin():
 
 def obtener_uso_por_modulo():
     conn = get_connection()
-    df = pd.read_sql_query("""
-        SELECT
-            modulo AS "Módulo",
-            COUNT(*) AS "Cantidad"
-        FROM transacciones
-        GROUP BY modulo
-        ORDER BY COUNT(*) DESC
-    """, conn)
+    df = pd.read_sql_query(
+        prepare_sql("""
+            SELECT
+                modulo AS "Módulo",
+                COUNT(*) AS "Cantidad"
+            FROM transacciones
+            GROUP BY modulo
+            ORDER BY COUNT(*) DESC
+        """),
+        conn
+    )
     conn.close()
     return df
 
 
 def obtener_errores_por_modulo():
     conn = get_connection()
-    df = pd.read_sql_query("""
-        SELECT
-            modulo AS "Módulo",
-            COUNT(*) AS "Errores"
-        FROM transacciones
-        WHERE estado = 'ERROR'
-        GROUP BY modulo
-        ORDER BY COUNT(*) DESC
-    """, conn)
+    df = pd.read_sql_query(
+        prepare_sql("""
+            SELECT
+                modulo AS "Módulo",
+                COUNT(*) AS "Errores"
+            FROM transacciones
+            WHERE estado = 'ERROR'
+            GROUP BY modulo
+            ORDER BY COUNT(*) DESC
+        """),
+        conn
+    )
     conn.close()
     return df

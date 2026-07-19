@@ -253,7 +253,7 @@ def render_admin_page():
     st.markdown("### 👥 Gestión de usuarios")
 
     if usuarios_df.empty:
-        st.info("No hay usuarios registrados en SQLite todavía.")
+        st.info("No hay usuarios registrados todavía.")
         return
 
     # Vista general de usuarios
