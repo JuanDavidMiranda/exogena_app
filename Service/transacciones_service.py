@@ -9,6 +9,13 @@ try:
 except Exception:  # pragma: no cover
     st = None
 
+
+if st is not None:
+    cache_data = st.cache_data(ttl=20)
+else:
+    def cache_data(func):
+        return func
+
 try:
     import psycopg2
 except Exception:  # pragma: no cover
@@ -254,6 +261,7 @@ def actualizar_rol_usuario(username_a_cambiar: str, nuevo_rol: str, username_ope
     conn.close()
 
 
+@cache_data
 def listar_usuarios():
     conn = get_connection()
     df = pd.read_sql_query(
@@ -328,6 +336,7 @@ def registrar_transaccion(
     conn.close()
 
 
+@cache_data
 def listar_transacciones(usuario=None, modulo=None, estado=None, fecha_inicio=None, fecha_fin=None, archivo=None):
     conn = get_connection()
 
@@ -382,6 +391,7 @@ def listar_transacciones(usuario=None, modulo=None, estado=None, fecha_inicio=No
 # ==========================================================
 # PANEL ADMIN
 # ==========================================================
+@cache_data
 def obtener_resumen_admin():
     conn = get_connection()
     cur = conn.cursor()
@@ -416,6 +426,7 @@ def obtener_resumen_admin():
     }
 
 
+@cache_data
 def obtener_uso_por_modulo():
     conn = get_connection()
     df = pd.read_sql_query(
@@ -433,6 +444,7 @@ def obtener_uso_por_modulo():
     return df
 
 
+@cache_data
 def obtener_errores_por_modulo():
     conn = get_connection()
     df = pd.read_sql_query(
