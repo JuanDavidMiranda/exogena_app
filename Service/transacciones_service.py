@@ -5,6 +5,11 @@ import pandas as pd
 from datetime import datetime
 
 try:
+    import streamlit as st
+except Exception:  # pragma: no cover
+    st = None
+
+try:
     import psycopg2
 except Exception:  # pragma: no cover
     psycopg2 = None
@@ -14,7 +19,6 @@ except Exception:  # pragma: no cover
 # ==========================================================
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
-DB_BACKEND = os.getenv("EXOGENA_DB_BACKEND", "sqlite").strip().lower()
 DB_PATH = Path(os.getenv("EXOGENA_DB_PATH", DATA_DIR / "app.db"))
 DB_PATH = DB_PATH if DB_PATH.is_absolute() else (BASE_DIR / DB_PATH)
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -26,11 +30,37 @@ DB_NAME = os.getenv("EXOGENA_DB_NAME", "").strip()
 DB_USER = os.getenv("EXOGENA_DB_USER", "").strip()
 DB_PASSWORD = os.getenv("EXOGENA_DB_PASSWORD", "").strip()
 
+
+def get_db_backend() -> str:
+    backend = os.getenv("EXOGENA_DB_BACKEND", "sqlite").strip().lower()
+    if st is not None:
+        try:
+            secrets_db = st.secrets.get("db", {})
+            backend_secret = str(secrets_db.get("EXOGENA_DB_BACKEND", backend)).strip().lower()
+            if backend_secret:
+                backend = backend_secret
+        except Exception:
+            pass
+    return backend
+
+
+def get_db_url() -> str:
+    url = os.getenv("EXOGENA_DB_URL", "").strip()
+    if st is not None:
+        try:
+            secrets_db = st.secrets.get("db", {})
+            url_secret = str(secrets_db.get("EXOGENA_DB_URL", url)).strip()
+            if url_secret:
+                url = url_secret
+        except Exception:
+            pass
+    return url
+
 # ==========================================================
 # FUNCIONES DE ADAPTACIÓN SQL
 # ==========================================================
 def prepare_sql(query: str) -> str:
-    if DB_BACKEND == "postgres":
+    if get_db_backend() == "postgres":
         return query.replace("?", "%s")
     return query
 
@@ -39,20 +69,24 @@ def prepare_sql(query: str) -> str:
 # CONEXIÓN
 # ==========================================================
 def get_connection():
-    if DB_BACKEND == "postgres":
+    backend = get_db_backend()
+
+    if backend == "postgres":
         if psycopg2 is None:
             raise RuntimeError("psycopg2 no está instalado. Agrega psycopg2-binary al proyecto.")
-        if not DB_URL:
+
+        db_url = get_db_url()
+        if not db_url:
             if not all([DB_HOST, DB_NAME, DB_USER, DB_PASSWORD]):
                 raise RuntimeError(
                     "Para PostgreSQL necesitas EXOGENA_DB_URL o las variables "
                     "EXOGENA_DB_HOST, EXOGENA_DB_NAME, EXOGENA_DB_USER y EXOGENA_DB_PASSWORD."
                 )
-            DB_URL = (
+            db_url = (
                 f"host={DB_HOST} port={DB_PORT} dbname={DB_NAME} "
                 f"user={DB_USER} password={DB_PASSWORD}"
             )
-        return psycopg2.connect(DB_URL)
+        return psycopg2.connect(db_url)
 
     return sqlite3.connect(str(DB_PATH))
 
@@ -64,7 +98,7 @@ def init_db():
     conn = get_connection()
     cur = conn.cursor()
 
-    if DB_BACKEND == "postgres":
+    if get_db_backend() == "postgres":
         cur.execute("""
             CREATE TABLE IF NOT EXISTS usuarios (
                 id BIGSERIAL PRIMARY KEY,
