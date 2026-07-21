@@ -1,7 +1,7 @@
 from transacciones_service import actualizar_rol_usuario, get_connection
 
 # Pon aquí el mismo usuario exacto que acabas de registrar en la interfaz
-USUARIO_REAL = "superadmin" 
+USUARIO_REAL = "juan" 
 
 conn = get_connection()
 cur = conn.cursor()
