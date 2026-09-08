@@ -3,8 +3,12 @@ import pandas as pd
 import streamlit as st
 
 from Service.audit_service import ejecutar_auditoria_service
+import Service.audit_service as audit_module
+st.write("ARCHIVO AUDIT SERVICE:", audit_module.__file__)
+
 from Ui.components import section_header, kpi_card, status_box, soft_divider
 from Service.transacciones_service import registrar_transaccion
+
 
 
 def _tabla_exportable(df):
