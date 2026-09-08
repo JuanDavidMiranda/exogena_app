@@ -346,6 +346,7 @@ def preparar_df_para_auditoria(
     col_clave: str | None = None,
     col_monto: str | None = None,
     col_factura: str | None = None,
+    columnas_info: list[str] | None = None,
 ) -> pd.DataFrame:
     """
     Estandariza un dataframe para conciliación factura por factura.
@@ -426,6 +427,12 @@ def preparar_df_para_auditoria(
         (df["__factura__"].astype(str).str.strip() != "")
     ].copy()
 
+    # Columnas adicionales: solo informativas, no forman parte de la comparación.
+    for i, nombre_columna in enumerate(columnas_info or []):
+        columna_real = encontrar_columna_por_nombre(df, nombre_columna)
+        if columna_real:
+            df[f"__info_{normalizar_texto(origen)}_{i}"] = df[columna_real]
+
     return df
 
 
@@ -433,41 +440,44 @@ def preparar_df_para_auditoria(
 # CONSOLIDACIÓN POR FACTURA
 # ============================================================
 
+def _primer_valor_util(serie: pd.Series):
+    """Devuelve el primer valor no vacío de una serie."""
+    for valor in serie:
+        if pd.notna(valor) and str(valor).strip() != "":
+            return valor
+    return ""
+
+
 def consolidar_por_factura(
     df: pd.DataFrame,
     nombre_origen: str,
+    columnas_info: list[str] | None = None,
 ) -> pd.DataFrame:
     """
-    Consolida únicamente registros que pertenecen a la misma factura.
-
-    La clave de agrupación es:
-        NIT + número de factura
-
-    Esto permite que un mismo NIT tenga múltiples facturas
-    sin que todas sean mezcladas en un solo registro.
+    Consolida por NIT + factura.
+    El monto se suma y las columnas informativas conservan el primer valor no vacío.
     """
     columna_valor = f"valor_{nombre_origen.lower()}"
 
     if df.empty:
-        return pd.DataFrame(
-            columns=[
-                "__clave_factura__",
-                "__clave__",
-                "__factura__",
-                columna_valor,
-            ]
-        )
+        return pd.DataFrame(columns=[
+            "__clave_factura__", "__clave__", "__factura__", columna_valor
+        ])
 
-    consolidado = (
-        df.groupby(
-            ["__clave_factura__", "__clave__", "__factura__"],
-            as_index=False,
-        )["__monto__"]
-        .sum()
-        .rename(columns={"__monto__": columna_valor})
-    )
+    origen_norm = normalizar_texto(nombre_origen)
+    agregaciones = {"__monto__": "sum"}
 
-    return consolidado
+    for i, _ in enumerate(columnas_info or []):
+        col_info = f"__info_{origen_norm}_{i}"
+        if col_info in df.columns:
+            agregaciones[col_info] = _primer_valor_util
+
+    consolidado = df.groupby(
+        ["__clave_factura__", "__clave__", "__factura__"],
+        as_index=False,
+    ).agg(agregaciones)
+
+    return consolidado.rename(columns={"__monto__": columna_valor})
 
 
 # Mantener compatibilidad si otra parte del proyecto todavía llama
@@ -475,6 +485,7 @@ def consolidar_por_factura(
 def consolidar_por_clave(
     df: pd.DataFrame,
     nombre_origen: str,
+    columnas_info: list[str] | None = None,
 ) -> pd.DataFrame:
     """
     Compatibilidad con versiones anteriores.
@@ -482,7 +493,7 @@ def consolidar_por_clave(
     IMPORTANTE:
     La conciliación principal ya NO utiliza esta función.
     """
-    return consolidar_por_factura(df, nombre_origen)
+    return consolidar_por_factura(df, nombre_origen, columnas_info=columnas_info)
 
 
 def construir_observacion(row) -> str:
@@ -555,6 +566,8 @@ def ejecutar_auditoria_service(
     col_clave_novasoft=None,
     col_monto_novasoft=None,
     col_factura_novasoft=None,
+    columnas_info_dian=None,
+    columnas_info_novasoft=None,
 ):
     """
     Realiza conciliación de compras FACTURA POR FACTURA.
@@ -621,6 +634,7 @@ def ejecutar_auditoria_service(
             col_clave=col_clave_dian,
             col_monto=col_monto_dian,
             col_factura=col_factura_dian,
+            columnas_info=columnas_info_dian,
         )
 
         df_novasoft = preparar_df_para_auditoria(
@@ -629,13 +643,14 @@ def ejecutar_auditoria_service(
             col_clave=col_clave_novasoft,
             col_monto=col_monto_novasoft,
             col_factura=col_factura_novasoft,
+            columnas_info=columnas_info_novasoft,
         )
 
         # ====================================================
         # 3) Consolidar POR FACTURA
         # ====================================================
-        dian_cons = consolidar_por_factura(df_dian, "dian")
-        novasoft_cons = consolidar_por_factura(df_novasoft, "novasoft")
+        dian_cons = consolidar_por_factura(df_dian, "dian", columnas_info=columnas_info_dian)
+        novasoft_cons = consolidar_por_factura(df_novasoft, "novasoft", columnas_info=columnas_info_novasoft)
 
         # ====================================================
         # 4) Cruce POR FACTURA
@@ -674,6 +689,24 @@ def ejecutar_auditoria_service(
                 .replace("", pd.NA)
                 .fillna(comparativo["__factura___novasoft"])
             )
+
+        # Agregar columnas informativas seleccionadas por el usuario.
+        # Estas columnas NO participan en la clave de comparación.
+        columnas_info_salida = []
+
+        for i, nombre_columna in enumerate(columnas_info_dian or []):
+            internal = f"__info_dian_{i}"
+            if internal in comparativo.columns:
+                salida = f"DIAN - {nombre_columna}"
+                comparativo[salida] = comparativo[internal]
+                columnas_info_salida.append(salida)
+
+        for i, nombre_columna in enumerate(columnas_info_novasoft or []):
+            internal = f"__info_novasoft_{i}"
+            if internal in comparativo.columns:
+                salida = f"Novasoft - {nombre_columna}"
+                comparativo[salida] = comparativo[internal]
+                columnas_info_salida.append(salida)
 
         # Normalizar montos.
         comparativo["valor_dian"] = pd.to_numeric(
@@ -781,15 +814,11 @@ def ejecutar_auditoria_service(
         ).copy()
 
         # Mantener solamente columnas útiles y en orden.
-        columnas_detalle = [
-            "Factura",
-            "Tercero / NIT",
-            "Valor DIAN",
-            "Valor Novasoft",
-            "Diferencia",
-            "Estado",
-            "Observación",
-        ]
+        columnas_detalle = (
+            ["Factura", "Tercero / NIT"]
+            + columnas_info_salida
+            + ["Valor DIAN", "Valor Novasoft", "Diferencia", "Estado", "Observación"]
+        )
 
         columnas_detalle = [
             columna
@@ -844,14 +873,11 @@ def ejecutar_auditoria_service(
                 }
             ).copy()
 
-            columnas = [
-                "Factura",
-                "Tercero / NIT",
-                "Valor DIAN",
-                "Valor Novasoft",
-                "Diferencia",
-                "Observación",
-            ]
+            columnas = (
+                ["Factura", "Tercero / NIT"]
+                + columnas_info_salida
+                + ["Valor DIAN", "Valor Novasoft", "Diferencia", "Observación"]
+            )
 
             columnas = [
                 columna

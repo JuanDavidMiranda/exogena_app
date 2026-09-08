@@ -13,7 +13,7 @@ from Service.transacciones_service import registrar_transaccion
 def render_auditoria_page():
     section_header(
         "🔄 Auditoría de datos: Novasoft vs formatos DIAN",
-        "Cruza el archivo base de Novasoft con el borrador del formato DIAN para identificar diferencias en valores por tercero."
+        "Cruza el archivo base de Novasoft con el borrador del formato DIAN para identificar diferencias en valores factura por factura."
     )
 
     user_info = st.session_state.get("user_info", {}) or {}
@@ -52,7 +52,7 @@ def render_auditoria_page():
 
     st.markdown("### 🧠 Configuración inteligente de columnas")
     st.info(
-        "El sistema lee ambos archivos, detecta sus columnas y te permite elegir qué campo usar como identificador y qué campo usar para comparar montos."
+        "El sistema lee ambos archivos, detecta sus columnas y te permite elegir qué campo usar para identificar el tercero, qué campo identifica la factura y qué campo usar para comparar montos. También puedes agregar columnas informativas que no afectan la comparación."
     )
 
     col_dian_cfg, col_nova_cfg = st.columns(2)
@@ -81,6 +81,23 @@ def render_auditoria_page():
             key="col_monto_dian",
         )
 
+        col_factura_dian = st.selectbox(
+            "Columna para identificar factura (DIAN)",
+            options=analisis["columnas_dian"] or ["No disponible"],
+            index=0 if analisis["columnas_dian"] else 0,
+            key="col_factura_dian",
+        )
+
+        columnas_info_dian = st.multiselect(
+            "Columnas adicionales para identificar la factura (DIAN)",
+            options=[
+                c for c in analisis["columnas_dian"]
+                if c not in {col_clave_dian, col_monto_dian, col_factura_dian}
+            ],
+            help="Estas columnas son únicamente informativas y no participan en la comparación.",
+            key="columnas_info_dian",
+        )
+
     with col_nova_cfg:
         st.markdown("**Columnas detectadas - Novasoft**")
         if analisis["columnas_novasoft"]:
@@ -105,6 +122,23 @@ def render_auditoria_page():
             key="col_monto_novasoft",
         )
 
+        col_factura_novasoft = st.selectbox(
+            "Columna para identificar factura (Novasoft)",
+            options=analisis["columnas_novasoft"] or ["No disponible"],
+            index=0 if analisis["columnas_novasoft"] else 0,
+            key="col_factura_novasoft",
+        )
+
+        columnas_info_novasoft = st.multiselect(
+            "Columnas adicionales para identificar la factura (Novasoft)",
+            options=[
+                c for c in analisis["columnas_novasoft"]
+                if c not in {col_clave_novasoft, col_monto_novasoft, col_factura_novasoft}
+            ],
+            help="Estas columnas son únicamente informativas y no participan en la comparación.",
+            key="columnas_info_novasoft",
+        )
+
     if not analisis["columnas_dian"] or not analisis["columnas_novasoft"]:
         st.warning("No fue posible leer columnas válidas en uno de los archivos. Revisa el formato o intenta con otro archivo.")
         return
@@ -121,6 +155,10 @@ def render_auditoria_page():
                 col_monto_dian=col_monto_dian if col_monto_dian != "No disponible" else None,
                 col_clave_novasoft=col_clave_novasoft if col_clave_novasoft != "No disponible" else None,
                 col_monto_novasoft=col_monto_novasoft if col_monto_novasoft != "No disponible" else None,
+                col_factura_dian=col_factura_dian if col_factura_dian != "No disponible" else None,
+                col_factura_novasoft=col_factura_novasoft if col_factura_novasoft != "No disponible" else None,
+                columnas_info_dian=columnas_info_dian,
+                columnas_info_novasoft=columnas_info_novasoft,
             )
 
             if not resultado.get("ok"):
@@ -198,16 +236,16 @@ def render_auditoria_page():
 
             with c3:
                 kpi_card(
-                    "Terceros conciliados",
+                    "Facturas conciliadas",
                     resumen["conciliados"],
-                    "Terceros sin diferencia"
+                    "Facturas sin diferencia"
                 )
 
             with c4:
                 kpi_card(
-                    "Con diferencia",
+                    "Facturas con diferencia",
                     resumen["con_diferencia"],
-                    "Terceros con valores distintos"
+                    "Facturas con valores distintos"
                 )
 
             st.markdown("")
@@ -270,7 +308,7 @@ def render_auditoria_page():
             # ==========================
             # Tabla principal
             # ==========================
-            st.markdown("### 📋 Detalle consolidado por tercero")
+            st.markdown("### 📋 Detalle de conciliación factura por factura")
 
             st.dataframe(
                 detalle,
