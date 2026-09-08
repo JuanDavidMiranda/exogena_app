@@ -1,4 +1,4 @@
-
+import pandas as pd
 
 from Utils.excel_reader import leer_excel_seguro
 
