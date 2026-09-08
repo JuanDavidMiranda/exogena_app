@@ -81,20 +81,13 @@ def render_auditoria_page():
             key="col_monto_dian",
         )
 
-        col_factura_dian = st.selectbox(
-            "Columna para identificar factura (DIAN)",
-            options=analisis["columnas_dian"] or ["No disponible"],
-            index=0 if analisis["columnas_dian"] else 0,
-            key="col_factura_dian",
-        )
-
         columnas_info_dian = st.multiselect(
             "Columnas adicionales para identificar la factura (DIAN)",
             options=[
                 c for c in analisis["columnas_dian"]
-                if c not in {col_clave_dian, col_monto_dian, col_factura_dian}
+                if c not in {col_clave_dian, col_monto_dian}
             ],
-            help="Estas columnas son únicamente informativas y no participan en la comparación.",
+            help="La factura se identifica automáticamente con la información del Excel. Estas columnas adicionales son únicamente informativas y no participan en la comparación.",
             key="columnas_info_dian",
         )
 
@@ -122,20 +115,13 @@ def render_auditoria_page():
             key="col_monto_novasoft",
         )
 
-        col_factura_novasoft = st.selectbox(
-            "Columna para identificar factura (Novasoft)",
-            options=analisis["columnas_novasoft"] or ["No disponible"],
-            index=0 if analisis["columnas_novasoft"] else 0,
-            key="col_factura_novasoft",
-        )
-
         columnas_info_novasoft = st.multiselect(
             "Columnas adicionales para identificar la factura (Novasoft)",
             options=[
                 c for c in analisis["columnas_novasoft"]
-                if c not in {col_clave_novasoft, col_monto_novasoft, col_factura_novasoft}
+                if c not in {col_clave_novasoft, col_monto_novasoft}
             ],
-            help="Estas columnas son únicamente informativas y no participan en la comparación.",
+            help="La factura se identifica automáticamente con la información del Excel. Estas columnas adicionales son únicamente informativas y no participan en la comparación.",
             key="columnas_info_novasoft",
         )
 
@@ -155,8 +141,9 @@ def render_auditoria_page():
                 col_monto_dian=col_monto_dian if col_monto_dian != "No disponible" else None,
                 col_clave_novasoft=col_clave_novasoft if col_clave_novasoft != "No disponible" else None,
                 col_monto_novasoft=col_monto_novasoft if col_monto_novasoft != "No disponible" else None,
-                col_factura_dian=col_factura_dian if col_factura_dian != "No disponible" else None,
-                col_factura_novasoft=col_factura_novasoft if col_factura_novasoft != "No disponible" else None,
+                # La columna de factura se detecta automáticamente dentro del servicio.
+                col_factura_dian=None,
+                col_factura_novasoft=None,
                 columnas_info_dian=columnas_info_dian,
                 columnas_info_novasoft=columnas_info_novasoft,
             )

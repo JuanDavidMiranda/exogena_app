@@ -1,4 +1,4 @@
-import pandas as pd
+
 
 from Utils.excel_reader import leer_excel_seguro
 
@@ -575,10 +575,10 @@ def ejecutar_auditoria_service(
     Parámetros:
     - col_clave_dian: columna de NIT/tercero en DIAN.
     - col_monto_dian: columna de valor en DIAN.
-    - col_factura_dian: columna que identifica la factura en DIAN.
+    - col_factura_dian: opcional; si no se envía, se detecta automáticamente en DIAN.
     - col_clave_novasoft: columna de NIT/tercero en Novasoft.
     - col_monto_novasoft: columna de valor en Novasoft.
-    - col_factura_novasoft: columna que identifica la factura en Novasoft.
+    - col_factura_novasoft: opcional; si no se envía, se detecta automáticamente en Novasoft.
 
     La clave real de comparación es:
         NIT + número de factura
