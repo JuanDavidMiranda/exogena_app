@@ -4,168 +4,62 @@ from Utils.excel_reader import leer_excel_seguro
 
 
 # ============================================================
-# CONFIGURACIÓN DE ALIASES / PRIORIDADES DE COLUMNAS
+# CONFIGURACION
 # ============================================================
+TOLERANCIA_MONTO_DEFAULT = 1.0
+TOLERANCIA_DIAS_DEFAULT = 3
 
-# ----------------------------
-# NOVASOFT / auxiliares compras
-# ----------------------------
-CLAVES_NOVASOFT = [
-    "provee",
-    "proveedor",
-    "nit proveedor",
-    "nit tercero",
-    "nit",
-    "tercero",
-    "documento",
-    "identificacion",
-    "identificación",
-    "cliente",
-]
-
-MONTOS_NOVASOFT = [
-    "ven_net",
-    "valor",
-    "valor total",
-    "monto",
-    "cos_tot",
-    "saldo",
-    "base",
-    "debito",
-    "débito",
-    "credito",
-    "crédito",
-    "mon_iva",
-    "mon_ret",
-    "mon_cre",
-]
-
-# Columnas candidatas para identificar una factura/documento.
-FACTURA_NOVASOFT = [
-    "numero factura",
-    "número factura",
-    "numero de factura",
-    "número de factura",
-    "factura",
-    "documento",
-    "numero documento",
-    "número documento",
-    "no factura",
-    "no. factura",
-    "nro factura",
-    "nro. factura",
-    "consecutivo",
-]
-
-# ----------------------------
-# DIAN / compras / facturación
-# ----------------------------
-CLAVES_DIAN = [
-    "nit emisor",
-    "nit receptor",
-    "nit",
-    "numero documento",
-    "número documento",
-    "documento",
-    "identificacion",
-    "identificación",
-    "nombre emisor",
-    "nombre receptor",
-    "tercero",
-    "razon social",
-    "razón social",
-]
-
-MONTOS_DIAN = [
-    "total",
-    "valor",
-    "valor total",
-    "monto",
-    "cuantia",
-    "cuantía",
-    "base",
-    "pago o abono",
-    "pago o abono en cuenta",
-    "retencion",
-    "retención",
-    "saldo",
-    "iva",
-    "rete iva",
-    "rete renta",
-    "rete ica",
-]
-
-FACTURA_DIAN = [
-    "numero factura",
-    "número factura",
-    "numero de factura",
-    "número de factura",
-    "factura",
-    "numero documento",
-    "número documento",
-    "documento",
-    "no factura",
-    "no. factura",
-    "nro factura",
-    "nro. factura",
-    "consecutivo",
-]
+ALIASES = {
+    "dian_nit": ["NIT Emisor", "NIT emisor", "nit emisor", "NIT"],
+    "dian_fecha": ["Fecha Emisión", "Fecha emision", "Fecha emisión", "fecha emisión"],
+    "dian_total": ["Total", "total", "Valor Total", "Valor total"],
+    "dian_folio": ["Folio", "folio", "Número", "Numero"],
+    "dian_prefijo": ["Prefijo", "prefijo"],
+    "dian_nombre": ["Nombre Emisor", "Nombre emisor", "Razon Social", "Razón Social"],
+    "dian_tipo": ["Tipo de documento", "Tipo Documento", "Tipo de documento"],
+    "nova_nit": ["provee", "proveedor", "nit proveedor", "nit tercero", "nit"],
+    "nova_numero": ["numero", "número", "numero documento", "documento"],
+    "nova_fecha": ["fecha", "Fecha"],
+    "nova_ven_net": ["ven_net", "ven net", "valor neto"],
+    "nova_iva": ["mon_iva", "mon iva", "iva"],
+    "nova_credito": ["mon_cre", "mon cre", "credito", "crédito"],
+}
 
 
-# ============================================================
-# HELPERS
-# ============================================================
-
-def normalizar_texto(texto):
-    return str(texto).strip().lower()
+def normalizar_texto(valor):
+    return str(valor).strip().lower()
 
 
-def normalizar_columnas(df: pd.DataFrame) -> pd.DataFrame:
+def normalizar_columnas(df):
     df = df.copy()
-    df.columns = [str(col).strip() for col in df.columns]
+    df.columns = [str(c).strip() for c in df.columns]
     return df
 
 
-def buscar_columna_prioritaria(df: pd.DataFrame, candidatos: list[str]):
-    """
-    Busca una columna por prioridad:
-    1) coincidencia exacta
-    2) coincidencia parcial
-    """
-    columnas_originales = list(df.columns)
-    columnas_normalizadas = {
-        normalizar_texto(col): col for col in columnas_originales
-    }
+def encontrar_columna(df, candidatos):
+    columnas = list(df.columns)
+    mapa = {normalizar_texto(c): c for c in columnas}
 
-    # 1. Match exacto por prioridad
+    for candidato in candidatos:
+        if normalizar_texto(candidato) in mapa:
+            return mapa[normalizar_texto(candidato)]
+
     for candidato in candidatos:
         candidato_norm = normalizar_texto(candidato)
-        if candidato_norm in columnas_normalizadas:
-            return columnas_normalizadas[candidato_norm]
-
-    # 2. Match parcial por prioridad
-    for candidato in candidatos:
-        candidato_norm = normalizar_texto(candidato)
-        for col in columnas_originales:
-            col_norm = normalizar_texto(col)
-            if candidato_norm in col_norm:
-                return col
-
+        for columna in columnas:
+            if candidato_norm in normalizar_texto(columna):
+                return columna
     return None
 
 
 def leer_archivo_tabular(archivo):
-    """
-    Lee un archivo Excel/CSV de forma segura.
-    """
     if hasattr(archivo, "seek"):
         try:
             archivo.seek(0)
         except Exception:
             pass
 
-    nombre = getattr(archivo, "name", "").lower()
-
+    nombre = str(getattr(archivo, "name", "")).lower()
     if nombre.endswith(".csv"):
         try:
             return pd.read_csv(archivo)
@@ -177,767 +71,398 @@ def leer_archivo_tabular(archivo):
                     pass
             return pd.read_csv(archivo, encoding="latin-1")
 
-    return leer_excel_seguro(archivo)
+    return normalizar_columnas(leer_excel_seguro(archivo))
 
 
-def obtener_columnas_disponibles(archivo):
-    """
-    Devuelve la lista de columnas detectadas en un archivo cargado.
-    """
-    df = leer_archivo_tabular(archivo)
+def convertir_monto(serie):
+    if pd.api.types.is_numeric_dtype(serie):
+        return pd.to_numeric(serie, errors="coerce").fillna(0.0)
 
-    if df is None or df.empty:
-        return []
+    texto = serie.astype(str).str.strip()
+    # Soporta formatos como $1,234.56 y tambien 1.234.567,89.
+    texto = texto.str.replace("$", "", regex=False).str.replace(" ", "", regex=False)
 
-    return [str(col).strip() for col in df.columns if str(col).strip() != ""]
+    # Si contiene coma y punto, se asume que el ultimo separador es decimal.
+    def convertir(valor):
+        if valor in ("", "nan", "None"):
+            return 0.0
+        try:
+            if "," in valor and "." in valor:
+                if valor.rfind(",") > valor.rfind("."):
+                    valor = valor.replace(".", "").replace(",", ".")
+                else:
+                    valor = valor.replace(",", "")
+            elif "," in valor:
+                # En estos reportes la coma normalmente es separador de miles.
+                valor = valor.replace(",", "")
+            return float(valor)
+        except (ValueError, TypeError):
+            return 0.0
 
-
-def encontrar_columna_por_nombre(df: pd.DataFrame, nombre) -> str | None:
-    """
-    Busca una columna exacta o tolerando diferencias de formato.
-    """
-    if nombre is None:
-        return None
-
-    nombre_str = str(nombre).strip()
-
-    if nombre_str == "":
-        return None
-
-    columnas_originales = list(df.columns)
-    columnas_map = {str(col).strip(): col for col in columnas_originales}
-
-    if nombre_str in columnas_map:
-        return columnas_map[nombre_str]
-
-    for col in columnas_originales:
-        if normalizar_texto(col) == normalizar_texto(nombre_str):
-            return col
-
-    return None
+    return texto.map(convertir)
 
 
-def sugerir_columnas_por_origen(df: pd.DataFrame, origen: str):
-    """
-    Sugiere:
-    - columna clave/tercero
-    - columna monto
-    - columna identificadora de factura
-    """
-    origen_norm = normalizar_texto(origen)
-
-    if origen_norm == "novasoft":
-        col_clave = buscar_columna_prioritaria(df, CLAVES_NOVASOFT)
-        col_monto = buscar_columna_prioritaria(df, MONTOS_NOVASOFT)
-        col_factura = buscar_columna_prioritaria(df, FACTURA_NOVASOFT)
-    else:
-        col_clave = buscar_columna_prioritaria(df, CLAVES_DIAN)
-        col_monto = buscar_columna_prioritaria(df, MONTOS_DIAN)
-        col_factura = buscar_columna_prioritaria(df, FACTURA_DIAN)
-
-    return {
-        "col_clave": col_clave,
-        "col_monto": col_monto,
-        "col_factura": col_factura,
-    }
-
-
-def analizar_archivos_para_auditoria(archivo_dian, archivo_novasoft):
-    """
-    Devuelve las columnas disponibles y las sugerencias de mapeo
-    para ambos archivos.
-    """
-    df_dian = leer_archivo_tabular(archivo_dian)
-    df_novasoft = leer_archivo_tabular(archivo_novasoft)
-
-    columnas_dian = obtener_columnas_disponibles(archivo_dian)
-    columnas_novasoft = obtener_columnas_disponibles(archivo_novasoft)
-
-    sugerencia_dian = sugerir_columnas_por_origen(df_dian, "DIAN")
-    sugerencia_novasoft = sugerir_columnas_por_origen(df_novasoft, "Novasoft")
-
-    return {
-        "columnas_dian": columnas_dian,
-        "columnas_novasoft": columnas_novasoft,
-        "sugerencia_dian": sugerencia_dian,
-        "sugerencia_novasoft": sugerencia_novasoft,
-    }
-
-
-def limpiar_clave(valor):
-    """
-    Limpia una clave de conciliación.
-    """
+def normalizar_nit(valor):
     if pd.isna(valor):
         return ""
-
-    return str(valor).strip()
-
-
-def normalizar_identificador_factura(valor):
-    """
-    Normaliza el identificador de factura para permitir comparar
-    valores provenientes de Excel con pequeñas diferencias de formato.
-
-    Ejemplos:
-        12345      -> 12345
-        "12345 "   -> 12345
-        "12345.0"  -> 12345
-    """
-    if pd.isna(valor):
-        return ""
-
     texto = str(valor).strip()
-
-    if texto == "":
-        return ""
-
-    # Evita que Excel convierta identificadores numéricos a "12345.0".
-    try:
-        numero = float(texto)
-        if numero.is_integer():
-            return str(int(numero))
-    except (ValueError, TypeError):
-        pass
-
+    if texto.endswith(".0"):
+        texto = texto[:-2]
+    # El NIT se compara sin separadores ni digito de verificacion separado.
+    texto = texto.replace(" ", "").replace("-", "")
     return texto
 
 
-def construir_clave_factura(valor_clave, valor_factura):
-    """
-    Construye la clave única utilizada para comparar una factura.
-
-    Se usa NIT + número de factura para evitar que facturas diferentes
-    del mismo tercero sean agrupadas.
-    """
-    clave = limpiar_clave(valor_clave)
-    factura = normalizar_identificador_factura(valor_factura)
-
-    if clave == "" and factura == "":
+def normalizar_identificador(valor):
+    if pd.isna(valor):
         return ""
-
-    return f"{clave}|||{factura}"
-
-
-def convertir_monto_a_numero(serie: pd.Series) -> pd.Series:
-    """
-    Convierte una serie a numérico tolerando formatos mixtos.
-    """
-    if pd.api.types.is_numeric_dtype(serie):
-        return serie.fillna(0)
-
-    serie = (
-        serie.astype(str)
-        .str.replace(",", "", regex=False)
-        .str.replace("$", "", regex=False)
-        .str.strip()
-    )
-
-    return pd.to_numeric(serie, errors="coerce").fillna(0)
+    texto = str(valor).strip()
+    if texto.endswith(".0"):
+        texto = texto[:-2]
+    return texto
 
 
-# ============================================================
-# PREPARACIÓN DE DATAFRAMES
-# ============================================================
-
-def preparar_df_para_auditoria(
-    df: pd.DataFrame,
-    origen: str,
-    col_clave: str | None = None,
-    col_monto: str | None = None,
-    col_factura: str | None = None,
-    columnas_info: list[str] | None = None,
-) -> pd.DataFrame:
-    """
-    Estandariza un dataframe para conciliación factura por factura.
-
-    Crea:
-    - __clave__: tercero/NIT
-    - __factura__: identificador de factura
-    - __clave_factura__: NIT + factura
-    - __monto__: monto numérico
-    """
-    df = normalizar_columnas(df)
-
-    origen_norm = normalizar_texto(origen)
-
-    # Si no se especifican las columnas, se detectan automáticamente.
-    if col_clave is None:
-        if origen_norm == "novasoft":
-            col_clave = buscar_columna_prioritaria(df, CLAVES_NOVASOFT)
-        else:
-            col_clave = buscar_columna_prioritaria(df, CLAVES_DIAN)
-    else:
-        col_clave = encontrar_columna_por_nombre(df, col_clave)
-
-    if col_monto is None:
-        if origen_norm == "novasoft":
-            col_monto = buscar_columna_prioritaria(df, MONTOS_NOVASOFT)
-        else:
-            col_monto = buscar_columna_prioritaria(df, MONTOS_DIAN)
-    else:
-        col_monto = encontrar_columna_por_nombre(df, col_monto)
-
-    if col_factura is None:
-        if origen_norm == "novasoft":
-            col_factura = buscar_columna_prioritaria(df, FACTURA_NOVASOFT)
-        else:
-            col_factura = buscar_columna_prioritaria(df, FACTURA_DIAN)
-    else:
-        col_factura = encontrar_columna_por_nombre(df, col_factura)
-
-    if not col_clave:
-        raise ValueError(
-            f"No se encontró una columna clave válida en el archivo {origen}. "
-            f"Columnas detectadas: {', '.join(df.columns.astype(str))}"
-        )
-
-    if not col_monto:
-        raise ValueError(
-            f"No se encontró una columna de monto válida en el archivo {origen}. "
-            f"Columnas detectadas: {', '.join(df.columns.astype(str))}"
-        )
-
-    if not col_factura:
-        raise ValueError(
-            f"No se encontró una columna identificadora de factura válida "
-            f"en el archivo {origen}. "
-            f"Columnas detectadas: {', '.join(df.columns.astype(str))}"
-        )
-
-    df = df.copy()
-
-    # Conservar las columnas seleccionadas en nombres internos estándar.
-    df["__clave__"] = df[col_clave].apply(limpiar_clave)
-    df["__factura__"] = df[col_factura].apply(normalizar_identificador_factura)
-    df["__monto__"] = convertir_monto_a_numero(df[col_monto])
-
-    # La comparación se hará por NIT + factura.
-    df["__clave_factura__"] = df.apply(
-        lambda fila: construir_clave_factura(
-            fila["__clave__"],
-            fila["__factura__"],
-        ),
-        axis=1,
-    )
-
-    # Eliminar filas sin una clave suficiente.
-    df = df[
-        (df["__clave__"].astype(str).str.strip() != "") &
-        (df["__factura__"].astype(str).str.strip() != "")
-    ].copy()
-
-    # Columnas adicionales: solo informativas, no forman parte de la comparación.
-    for i, nombre_columna in enumerate(columnas_info or []):
-        columna_real = encontrar_columna_por_nombre(df, nombre_columna)
-        if columna_real:
-            df[f"__info_{normalizar_texto(origen)}_{i}"] = df[columna_real]
-
-    return df
+def normalizar_fecha(serie):
+    return pd.to_datetime(serie, errors="coerce", dayfirst=True).dt.normalize()
 
 
-# ============================================================
-# CONSOLIDACIÓN POR FACTURA
-# ============================================================
+def construir_factura_dian(prefijo, folio):
+    prefijo = normalizar_identificador(prefijo)
+    folio = normalizar_identificador(folio)
+    if prefijo and folio:
+        return f"{prefijo}-{folio}"
+    return folio or prefijo
 
-def _primer_valor_util(serie: pd.Series):
-    """Devuelve el primer valor no vacío de una serie."""
+
+def _primer_valor(serie):
     for valor in serie:
         if pd.notna(valor) and str(valor).strip() != "":
             return valor
     return ""
 
 
-def consolidar_por_factura(
-    df: pd.DataFrame,
-    nombre_origen: str,
-    columnas_info: list[str] | None = None,
-) -> pd.DataFrame:
-    """
-    Consolida por NIT + factura.
-    El monto se suma y las columnas informativas conservan el primer valor no vacío.
-    """
-    columna_valor = f"valor_{nombre_origen.lower()}"
+def preparar_dian(df):
+    df = normalizar_columnas(df)
 
-    if df.empty:
-        return pd.DataFrame(columns=[
-            "__clave_factura__", "__clave__", "__factura__", columna_valor
-        ])
+    col_nit = encontrar_columna(df, ALIASES["dian_nit"])
+    col_fecha = encontrar_columna(df, ALIASES["dian_fecha"])
+    col_total = encontrar_columna(df, ALIASES["dian_total"])
+    col_folio = encontrar_columna(df, ALIASES["dian_folio"])
+    col_prefijo = encontrar_columna(df, ALIASES["dian_prefijo"])
+    col_nombre = encontrar_columna(df, ALIASES["dian_nombre"])
+    col_tipo = encontrar_columna(df, ALIASES["dian_tipo"])
 
-    origen_norm = normalizar_texto(nombre_origen)
-    agregaciones = {"__monto__": "sum"}
+    faltantes = []
+    for nombre, columna in [("NIT Emisor", col_nit), ("Fecha Emisión", col_fecha), ("Total", col_total)]:
+        if not columna:
+            faltantes.append(nombre)
+    if faltantes:
+        raise ValueError(
+            "No se pudieron detectar las columnas obligatorias de DIAN: "
+            + ", ".join(faltantes)
+            + f". Columnas detectadas: {', '.join(map(str, df.columns))}"
+        )
 
-    for i, _ in enumerate(columnas_info or []):
-        col_info = f"__info_{origen_norm}_{i}"
-        if col_info in df.columns:
-            agregaciones[col_info] = _primer_valor_util
+    out = pd.DataFrame(index=df.index)
+    out["nit"] = df[col_nit].map(normalizar_nit)
+    out["fecha_dian"] = normalizar_fecha(df[col_fecha])
+    out["total_dian"] = convertir_monto(df[col_total]).round(2)
+    out["factura_dian"] = [
+        construir_factura_dian(
+            df[col_prefijo].iloc[i] if col_prefijo else "",
+            df[col_folio].iloc[i] if col_folio else "",
+        )
+        for i in range(len(df))
+    ]
+    out["nombre_emisor"] = df[col_nombre] if col_nombre else ""
+    out["tipo_documento"] = df[col_tipo] if col_tipo else ""
 
-    consolidado = df.groupby(
-        ["__clave_factura__", "__clave__", "__factura__"],
-        as_index=False,
-    ).agg(agregaciones)
+    # Para compras, las notas de credito no se cruzan como facturas.
+    if col_tipo:
+        tipo = out["tipo_documento"].astype(str).str.lower()
+        es_factura = tipo.str.contains("factura", na=False) & ~tipo.str.contains("nota", na=False)
+        if es_factura.any():
+            out = out[es_factura].copy()
 
-    return consolidado.rename(columns={"__monto__": columna_valor})
-
-
-# Mantener compatibilidad si otra parte del proyecto todavía llama
-# a consolidar_por_clave().
-def consolidar_por_clave(
-    df: pd.DataFrame,
-    nombre_origen: str,
-    columnas_info: list[str] | None = None,
-) -> pd.DataFrame:
-    """
-    Compatibilidad con versiones anteriores.
-
-    IMPORTANTE:
-    La conciliación principal ya NO utiliza esta función.
-    """
-    return consolidar_por_factura(df, nombre_origen, columnas_info=columnas_info)
-
-
-def construir_observacion(row) -> str:
-    """
-    Etiqueta funcional para entender el resultado de la conciliación.
-    """
-    valor_dian = float(row.get("valor_dian", 0) or 0)
-    valor_novasoft = float(row.get("valor_novasoft", 0) or 0)
-    diferencia = float(row.get("diferencia", 0) or 0)
-
-    if valor_dian > 0 and valor_novasoft == 0:
-        return "Solo en DIAN"
-
-    if valor_novasoft > 0 and valor_dian == 0:
-        return "Solo en Novasoft"
-
-    if abs(diferencia) < 0.01:
-        return "Conciliado"
-
-    if diferencia > 0:
-        return "Monto DIAN mayor"
-
-    return "Monto Novasoft mayor"
+    out = out[(out["nit"] != "") & out["fecha_dian"].notna()].copy()
+    out["_dian_id"] = range(len(out))
+    return out.reset_index(drop=True)
 
 
-# ============================================================
-# FORMATO
-# ============================================================
+def preparar_novasoft(df):
+    df = normalizar_columnas(df)
 
-def aplicar_formato_monedas(
-    df: pd.DataFrame,
-    columnas: list[str],
-) -> pd.DataFrame:
-    """
-    Convierte columnas numéricas a texto con formato de moneda
-    para facilitar la lectura.
-    """
-    resultado = df.copy()
+    col_nit = encontrar_columna(df, ALIASES["nova_nit"])
+    col_numero = encontrar_columna(df, ALIASES["nova_numero"])
+    col_fecha = encontrar_columna(df, ALIASES["nova_fecha"])
+    col_ven_net = encontrar_columna(df, ALIASES["nova_ven_net"])
+    col_iva = encontrar_columna(df, ALIASES["nova_iva"])
+    col_credito = encontrar_columna(df, ALIASES["nova_credito"])
 
-    for columna in columnas:
-        if columna in resultado.columns:
-            resultado[columna] = pd.to_numeric(
-                resultado[columna],
-                errors="coerce",
-            ).fillna(0)
+    faltantes = []
+    for nombre, columna in [("provee/NIT", col_nit), ("numero", col_numero), ("fecha", col_fecha), ("ven_net", col_ven_net)]:
+        if not columna:
+            faltantes.append(nombre)
+    if faltantes:
+        raise ValueError(
+            "No se pudieron detectar las columnas obligatorias de Novasoft: "
+            + ", ".join(faltantes)
+            + f". Columnas detectadas: {', '.join(map(str, df.columns))}"
+        )
 
-            resultado[columna] = resultado[columna].apply(
-                lambda valor: (
-                    f"-${abs(valor):,.2f}"
-                    if pd.notna(valor) and valor < 0
-                    else f"${valor:,.2f}"
-                )
-                if pd.notna(valor)
-                else "$0.00"
+    trabajo = pd.DataFrame()
+    trabajo["nit"] = df[col_nit].map(normalizar_nit)
+    trabajo["numero_novasoft"] = df[col_numero].map(normalizar_identificador)
+    trabajo["fecha_novasoft"] = normalizar_fecha(df[col_fecha])
+    trabajo["ven_net"] = convertir_monto(df[col_ven_net])
+    trabajo["mon_iva"] = convertir_monto(df[col_iva]) if col_iva else 0.0
+    trabajo["mon_cre"] = convertir_monto(df[col_credito]) if col_credito else 0.0
+
+    # En el auxiliar analizado, el total que corresponde al valor de la factura
+    # es ven_net + IVA - credito.
+    trabajo["total_novasoft"] = (
+        trabajo["ven_net"] + trabajo["mon_iva"] - trabajo["mon_cre"]
+    ).round(2)
+
+    trabajo = trabajo[
+        (trabajo["nit"] != "")
+        & (trabajo["numero_novasoft"] != "")
+        & trabajo["fecha_novasoft"].notna()
+    ].copy()
+
+    # Cada factura Novasoft puede tener varias filas por item. Se consolida
+    # primero por NIT + documento + fecha para evitar duplicar el valor.
+    consolidado = (
+        trabajo.groupby(
+            ["nit", "numero_novasoft", "fecha_novasoft"],
+            as_index=False,
+        )[["ven_net", "mon_iva", "mon_cre", "total_novasoft"]]
+        .sum()
+    )
+    consolidado["_nova_id"] = range(len(consolidado))
+    return consolidado
+
+
+def _candidatos_por_nit_monto(novasoft, nit, monto, tolerancia_monto):
+    candidatos = novasoft[novasoft["nit"] == nit].copy()
+    if candidatos.empty:
+        return candidatos
+    candidatos["dif_monto_abs"] = (candidatos["total_novasoft"] - monto).abs()
+    return candidatos[candidatos["dif_monto_abs"] <= tolerancia_monto].copy()
+
+
+def conciliar_facturas(dian, novasoft, tolerancia_monto=1.0, tolerancia_dias=3):
+    """Cruce uno-a-uno usando NIT + fecha + total, con fallback por fecha."""
+    usados = set()
+    resultados = []
+
+    for _, factura in dian.iterrows():
+        nit = factura["nit"]
+        fecha_dian = factura["fecha_dian"]
+        total_dian = float(factura["total_dian"])
+
+        candidatos = _candidatos_por_nit_monto(
+            novasoft, nit, total_dian, tolerancia_monto
+        )
+        candidatos = candidatos[~candidatos["_nova_id"].isin(usados)].copy()
+
+        exactos = candidatos[
+            candidatos["fecha_novasoft"] == fecha_dian
+        ].copy()
+
+        estado = "🔴 No encontrada"
+        observacion = "No se encontró un documento Novasoft con NIT, fecha y valor compatibles."
+        elegido = None
+        nivel = "No encontrada"
+
+        if len(exactos) == 1:
+            elegido = exactos.iloc[0]
+            estado = "🟢 Exacta"
+            nivel = "Exacta"
+            observacion = "Coincidencia exacta por NIT + fecha + valor."
+        elif len(exactos) > 1:
+            estado = "🟠 Ambigua"
+            nivel = "Ambigua"
+            observacion = f"Se encontraron {len(exactos)} documentos Novasoft con el mismo NIT, fecha y valor."
+        else:
+            # Fallback: mismo NIT + mismo valor y fecha cercana.
+            if not candidatos.empty:
+                candidatos["dif_dias"] = (
+                    candidatos["fecha_novasoft"] - fecha_dian
+                ).abs().dt.days
+                cercanos = candidatos[candidatos["dif_dias"] <= tolerancia_dias].copy()
+                cercanos = cercanos.sort_values(["dif_dias", "dif_monto_abs"])
+
+                if len(cercanos) == 1:
+                    elegido = cercanos.iloc[0]
+                    estado = "🟡 Probable"
+                    nivel = "Probable"
+                    observacion = (
+                        "Coincidencia por NIT + valor; revisar fecha. "
+                        f"La fecha difiere {int(elegido['dif_dias'])} día(s)."
+                    )
+                elif len(cercanos) > 1:
+                    estado = "🟠 Ambigua"
+                    nivel = "Ambigua"
+                    observacion = (
+                        f"Hay {len(cercanos)} candidatos por NIT + valor dentro de "
+                        f"±{tolerancia_dias} días. Requiere revisión manual."
+                    )
+
+        fila = {
+            "Factura DIAN": factura["factura_dian"],
+            "Documento Novasoft": elegido["numero_novasoft"] if elegido is not None else "",
+            "NIT": nit,
+            "Nombre emisor": factura["nombre_emisor"],
+            "Fecha DIAN": fecha_dian,
+            "Fecha Novasoft": elegido["fecha_novasoft"] if elegido is not None else pd.NaT,
+            "Total DIAN": total_dian,
+            "Total Novasoft": float(elegido["total_novasoft"]) if elegido is not None else 0.0,
+            "Diferencia": round(total_dian - (float(elegido["total_novasoft"]) if elegido is not None else 0.0), 2),
+            "Resultado": estado,
+            "Nivel coincidencia": nivel,
+            "Observación": observacion,
+            "_nova_id": elegido["_nova_id"] if elegido is not None else pd.NA,
+        }
+        resultados.append(fila)
+
+        if elegido is not None:
+            usados.add(int(elegido["_nova_id"]))
+
+    detalle = pd.DataFrame(resultados)
+
+    # Agregar documentos Novasoft que no fueron utilizados.
+    no_usados = novasoft[~novasoft["_nova_id"].isin(usados)].copy()
+    solo_novasoft = no_usados.rename(
+        columns={
+            "numero_novasoft": "Documento Novasoft",
+            "nit": "NIT",
+            "fecha_novasoft": "Fecha Novasoft",
+            "total_novasoft": "Total Novasoft",
+        }
+    )[["Documento Novasoft", "NIT", "Fecha Novasoft", "Total Novasoft"]].copy()
+    solo_novasoft["Observación"] = "Documento Novasoft sin factura DIAN asociada."
+
+    return detalle, solo_novasoft
+
+
+def _formatear_monedas(df, columnas):
+    out = df.copy()
+    for col in columnas:
+        if col in out.columns:
+            out[col] = pd.to_numeric(out[col], errors="coerce").fillna(0).map(
+                lambda x: f"-${abs(x):,.2f}" if x < 0 else f"${x:,.2f}"
             )
+    return out
 
-    return resultado
 
+def _formatear_fechas(df, columnas):
+    out = df.copy()
+    for col in columnas:
+        if col in out.columns:
+            out[col] = pd.to_datetime(out[col], errors="coerce").dt.strftime("%d/%m/%Y")
+            out[col] = out[col].fillna("")
+    return out
 
-# ============================================================
-# SERVICIO PRINCIPAL DE CONCILIACIÓN
-# ============================================================
 
 def ejecutar_auditoria_service(
     archivo_dian,
     archivo_novasoft,
-    col_clave_dian=None,
-    col_monto_dian=None,
-    col_factura_dian=None,
-    col_clave_novasoft=None,
-    col_monto_novasoft=None,
-    col_factura_novasoft=None,
-    columnas_info_dian=None,
-    columnas_info_novasoft=None,
+    tolerancia_monto=TOLERANCIA_MONTO_DEFAULT,
+    tolerancia_dias=TOLERANCIA_DIAS_DEFAULT,
+    **kwargs,
 ):
-    """
-    Realiza conciliación de compras FACTURA POR FACTURA.
-
-    Parámetros:
-    - col_clave_dian: columna de NIT/tercero en DIAN.
-    - col_monto_dian: columna de valor en DIAN.
-    - col_factura_dian: opcional; si no se envía, se detecta automáticamente en DIAN.
-    - col_clave_novasoft: columna de NIT/tercero en Novasoft.
-    - col_monto_novasoft: columna de valor en Novasoft.
-    - col_factura_novasoft: opcional; si no se envía, se detecta automáticamente en Novasoft.
-
-    La clave real de comparación es:
-        NIT + número de factura
-
-    Retorna:
-    - resumen general
-    - detalle por factura
-    - dif_montos
-    - solo_dian
-    - solo_novasoft
-    - conciliados_df
-    """
     try:
         if archivo_dian is None or archivo_novasoft is None:
-            raise ValueError(
-                "Debes cargar ambos archivos: DIAN y Novasoft."
-            )
+            raise ValueError("Debes cargar ambos archivos: DIAN y Novasoft.")
 
-        # ====================================================
-        # 1) Leer archivos
-        # ====================================================
         df_dian_raw = leer_archivo_tabular(archivo_dian)
-        df_novasoft_raw = leer_archivo_tabular(archivo_novasoft)
+        df_nova_raw = leer_archivo_tabular(archivo_novasoft)
 
-        print("\n========== DEBUG DIAN RAW ==========")
-        print("Columnas DIAN RAW:", list(df_dian_raw.columns))
-        print("Shape DIAN RAW:", df_dian_raw.shape)
-        print(df_dian_raw.head(15).to_string())
-        print("====================================\n")
+        dian = preparar_dian(df_dian_raw)
+        novasoft = preparar_novasoft(df_nova_raw)
 
-        print("\n========== DEBUG NOVASOFT RAW ==========")
-        print("Columnas NOVASOFT RAW:", list(df_novasoft_raw.columns))
-        print("Shape NOVASOFT RAW:", df_novasoft_raw.shape)
-        print(df_novasoft_raw.head(10).to_string())
-        print("========================================\n")
-
-        if df_dian_raw is None or df_dian_raw.empty:
-            raise ValueError(
-                "El archivo DIAN no contiene información válida."
-            )
-
-        if df_novasoft_raw is None or df_novasoft_raw.empty:
-            raise ValueError(
-                "El archivo Novasoft no contiene información válida."
-            )
-
-        # ====================================================
-        # 2) Preparar dataframes
-        # ====================================================
-        df_dian = preparar_df_para_auditoria(
-            df_dian_raw,
-            "DIAN",
-            col_clave=col_clave_dian,
-            col_monto=col_monto_dian,
-            col_factura=col_factura_dian,
-            columnas_info=columnas_info_dian,
+        detalle, solo_novasoft = conciliar_facturas(
+            dian,
+            novasoft,
+            tolerancia_monto=float(tolerancia_monto),
+            tolerancia_dias=int(tolerancia_dias),
         )
 
-        df_novasoft = preparar_df_para_auditoria(
-            df_novasoft_raw,
-            "Novasoft",
-            col_clave=col_clave_novasoft,
-            col_monto=col_monto_novasoft,
-            col_factura=col_factura_novasoft,
-            columnas_info=columnas_info_novasoft,
-        )
+        if detalle.empty:
+            detalle = pd.DataFrame(columns=[
+                "Factura DIAN", "Documento Novasoft", "NIT", "Nombre emisor",
+                "Fecha DIAN", "Fecha Novasoft", "Total DIAN", "Total Novasoft",
+                "Diferencia", "Resultado", "Nivel coincidencia", "Observación"
+            ])
 
-        # ====================================================
-        # 3) Consolidar POR FACTURA
-        # ====================================================
-        dian_cons = consolidar_por_factura(df_dian, "dian", columnas_info=columnas_info_dian)
-        novasoft_cons = consolidar_por_factura(df_novasoft, "novasoft", columnas_info=columnas_info_novasoft)
+        exactas = detalle[detalle["Nivel coincidencia"] == "Exacta"].copy()
+        probables = detalle[detalle["Nivel coincidencia"] == "Probable"].copy()
+        ambiguas = detalle[detalle["Nivel coincidencia"] == "Ambigua"].copy()
+        no_encontradas = detalle[detalle["Nivel coincidencia"] == "No encontrada"].copy()
+        con_diferencia = detalle[detalle["Diferencia"].abs() > tolerancia_monto].copy()
 
-        # ====================================================
-        # 4) Cruce POR FACTURA
-        # ====================================================
-        comparativo = pd.merge(
-            dian_cons,
-            novasoft_cons,
-            on="__clave_factura__",
-            how="outer",
-            suffixes=("_dian", "_novasoft"),
-        )
-
-        # Recuperar NIT y factura de cualquiera de los dos archivos.
-        comparativo["__clave__"] = (
-            comparativo["__clave___dian"]
-            if "__clave___dian" in comparativo.columns
-            else pd.Series(index=comparativo.index, dtype=object)
-        )
-
-        if "__clave___novasoft" in comparativo.columns:
-            comparativo["__clave__"] = (
-                comparativo["__clave__"]
-                .replace("", pd.NA)
-                .fillna(comparativo["__clave___novasoft"])
-            )
-
-        comparativo["__factura__"] = (
-            comparativo["__factura___dian"]
-            if "__factura___dian" in comparativo.columns
-            else pd.Series(index=comparativo.index, dtype=object)
-        )
-
-        if "__factura___novasoft" in comparativo.columns:
-            comparativo["__factura__"] = (
-                comparativo["__factura__"]
-                .replace("", pd.NA)
-                .fillna(comparativo["__factura___novasoft"])
-            )
-
-        # Agregar columnas informativas seleccionadas por el usuario.
-        # Estas columnas NO participan en la clave de comparación.
-        columnas_info_salida = []
-
-        for i, nombre_columna in enumerate(columnas_info_dian or []):
-            internal = f"__info_dian_{i}"
-            if internal in comparativo.columns:
-                salida = f"DIAN - {nombre_columna}"
-                comparativo[salida] = comparativo[internal]
-                columnas_info_salida.append(salida)
-
-        for i, nombre_columna in enumerate(columnas_info_novasoft or []):
-            internal = f"__info_novasoft_{i}"
-            if internal in comparativo.columns:
-                salida = f"Novasoft - {nombre_columna}"
-                comparativo[salida] = comparativo[internal]
-                columnas_info_salida.append(salida)
-
-        # Normalizar montos.
-        comparativo["valor_dian"] = pd.to_numeric(
-            comparativo.get("valor_dian", 0),
-            errors="coerce",
-        ).fillna(0)
-
-        comparativo["valor_novasoft"] = pd.to_numeric(
-            comparativo.get("valor_novasoft", 0),
-            errors="coerce",
-        ).fillna(0)
-
-        # ====================================================
-        # 5) Diferencia y estado
-        # ====================================================
-        comparativo["diferencia"] = (
-            comparativo["valor_dian"] -
-            comparativo["valor_novasoft"]
-        ).round(2)
-
-        comparativo["observacion"] = comparativo.apply(
-            construir_observacion,
-            axis=1,
-        )
-
-        comparativo["estado"] = comparativo["observacion"].apply(
-            lambda obs: (
-                "Conciliado"
-                if obs == "Conciliado"
-                else "Diferencia"
-            )
-        )
-
-        # Ordenar por mayor diferencia absoluta.
-        comparativo = comparativo.sort_values(
-            by="diferencia",
-            key=lambda s: s.abs(),
-            ascending=False,
-        ).reset_index(drop=True)
-
-        # ====================================================
-        # 6) Subconjuntos funcionales
-        # ====================================================
-        solo_dian = comparativo[
-            (comparativo["valor_dian"] > 0) &
-            (comparativo["valor_novasoft"] == 0)
-        ].copy()
-
-        solo_novasoft = comparativo[
-            (comparativo["valor_novasoft"] > 0) &
-            (comparativo["valor_dian"] == 0)
-        ].copy()
-
-        dif_montos = comparativo[
-            (comparativo["valor_dian"] > 0) &
-            (comparativo["valor_novasoft"] > 0) &
-            (comparativo["diferencia"].abs() >= 0.01)
-        ].copy()
-
-        conciliados_df = comparativo[
-            comparativo["diferencia"].abs() < 0.01
-        ].copy()
-
-        # ====================================================
-        # 7) KPIs / resumen
-        # ====================================================
-        total_dian = round(comparativo["valor_dian"].sum(), 2)
-        total_novasoft = round(comparativo["valor_novasoft"].sum(), 2)
+        # Para el total de Novasoft se usa todo el auxiliar consolidado.
+        total_dian = round(float(dian["total_dian"].sum()), 2)
+        total_novasoft = round(float(novasoft["total_novasoft"].sum()), 2)
         diferencia_total = round(total_dian - total_novasoft, 2)
 
-        terceros_dian = int(df_dian["__clave__"].nunique())
-        terceros_novasoft = int(df_novasoft["__clave__"].nunique())
-
-        registros_dian = int(len(df_dian))
-        registros_novasoft = int(len(df_novasoft))
-
-        facturas_dian = int(dian_cons["__clave_factura__"].nunique())
-        facturas_novasoft = int(
-            novasoft_cons["__clave_factura__"].nunique()
+        detalle_salida = detalle.drop(columns=["_nova_id"], errors="ignore").copy()
+        detalle_salida = _formatear_fechas(detalle_salida, ["Fecha DIAN", "Fecha Novasoft"])
+        detalle_salida = _formatear_monedas(
+            detalle_salida, ["Total DIAN", "Total Novasoft", "Diferencia"]
         )
 
-        facturas_comparadas = int(len(comparativo))
+        solo_dian = no_encontradas.drop(columns=["_nova_id"], errors="ignore").copy()
+        solo_dian = _formatear_fechas(solo_dian, ["Fecha DIAN", "Fecha Novasoft"])
+        solo_dian = _formatear_monedas(solo_dian, ["Total DIAN", "Total Novasoft", "Diferencia"])
 
-        conciliados = int(
-            (comparativo["estado"] == "Conciliado").sum()
-        )
+        solo_novasoft_salida = _formatear_fechas(solo_novasoft, ["Fecha Novasoft"])
+        solo_novasoft_salida = _formatear_monedas(solo_novasoft_salida, ["Total Novasoft"])
 
-        con_diferencia = int(
-            (comparativo["estado"] == "Diferencia").sum()
-        )
+        dif_montos = _formatear_fechas(con_diferencia.drop(columns=["_nova_id"], errors="ignore"), ["Fecha DIAN", "Fecha Novasoft"])
+        dif_montos = _formatear_monedas(dif_montos, ["Total DIAN", "Total Novasoft", "Diferencia"])
 
-        # ====================================================
-        # 8) DataFrame principal de salida
-        # ====================================================
-        detalle = comparativo.rename(
-            columns={
-                "__clave__": "Tercero / NIT",
-                "__factura__": "Factura",
-                "valor_dian": "Valor DIAN",
-                "valor_novasoft": "Valor Novasoft",
-                "diferencia": "Diferencia",
-                "estado": "Estado",
-                "observacion": "Observación",
-            }
-        ).copy()
+        conciliados_df = detalle[
+            (detalle["Nivel coincidencia"].isin(["Exacta", "Probable"]))
+            & (detalle["Diferencia"].abs() <= tolerancia_monto)
+        ].drop(columns=["_nova_id"], errors="ignore").copy()
+        conciliados_df = _formatear_fechas(conciliados_df, ["Fecha DIAN", "Fecha Novasoft"])
+        conciliados_df = _formatear_monedas(conciliados_df, ["Total DIAN", "Total Novasoft", "Diferencia"])
 
-        # Mantener solamente columnas útiles y en orden.
-        columnas_detalle = (
-            ["Factura", "Tercero / NIT"]
-            + columnas_info_salida
-            + ["Valor DIAN", "Valor Novasoft", "Diferencia", "Estado", "Observación"]
-        )
+        resumen = {
+            "total_dian": total_dian,
+            "total_novasoft": total_novasoft,
+            "diferencia_total": diferencia_total,
+            "terceros_dian": int(dian["nit"].nunique()),
+            "terceros_novasoft": int(novasoft["nit"].nunique()),
+            "registros_dian": int(len(dian)),
+            "registros_novasoft": int(len(df_nova_raw)),
+            "facturas_dian": int(len(dian)),
+            "facturas_novasoft": int(len(novasoft)),
+            "facturas_comparadas": int(len(detalle)),
+            "conciliados": int(len(exactas)),
+            "probables": int(len(probables)),
+            "ambiguas": int(len(ambiguas)),
+            "no_encontradas": int(len(no_encontradas)),
+            "con_diferencia": int(len(con_diferencia)),
+            "solo_dian": int(len(no_encontradas)),
+            "solo_novasoft": int(len(solo_novasoft)),
+            "dif_montos": int(len(con_diferencia)),
+        }
 
-        columnas_detalle = [
-            columna
-            for columna in columnas_detalle
-            if columna in detalle.columns
-        ]
-
-        detalle = detalle[columnas_detalle]
-
-        detalle["Estado"] = detalle["Estado"].replace(
-            {
-                "Conciliado": "🟢 Conciliado",
-                "Diferencia": "🟠 Diferencia",
-            }
-        )
-
-        detalle = aplicar_formato_monedas(
-            detalle,
-            [
-                "Valor DIAN",
-                "Valor Novasoft",
-                "Diferencia",
-            ],
-        )
-
-        # ====================================================
-        # 9) Subtablas
-        # ====================================================
-        def formatear_subtabla(
-            df_sub: pd.DataFrame,
-        ) -> pd.DataFrame:
-            if df_sub.empty:
-                return pd.DataFrame(
-                    columns=[
-                        "Factura",
-                        "Tercero / NIT",
-                        "Valor DIAN",
-                        "Valor Novasoft",
-                        "Diferencia",
-                        "Observación",
-                    ]
-                )
-
-            out = df_sub.rename(
-                columns={
-                    "__clave__": "Tercero / NIT",
-                    "__factura__": "Factura",
-                    "valor_dian": "Valor DIAN",
-                    "valor_novasoft": "Valor Novasoft",
-                    "diferencia": "Diferencia",
-                    "observacion": "Observación",
-                }
-            ).copy()
-
-            columnas = (
-                ["Factura", "Tercero / NIT"]
-                + columnas_info_salida
-                + ["Valor DIAN", "Valor Novasoft", "Diferencia", "Observación"]
-            )
-
-            columnas = [
-                columna
-                for columna in columnas
-                if columna in out.columns
-            ]
-
-            out = aplicar_formato_monedas(
-                out,
-                [
-                    "Valor DIAN",
-                    "Valor Novasoft",
-                    "Diferencia",
-                ],
-            )
-
-            return out[columnas]
-
-        solo_dian_out = formatear_subtabla(solo_dian)
-        solo_novasoft_out = formatear_subtabla(solo_novasoft)
-        dif_montos_out = formatear_subtabla(dif_montos)
-        conciliados_out = formatear_subtabla(conciliados_df)
-
-        # ====================================================
-        # 10) Respuesta del service
-        # ====================================================
         return {
             "ok": True,
             "mensaje": "Conciliación factura por factura procesada correctamente.",
-
-            "resumen": {
-                "total_dian": total_dian,
-                "total_novasoft": total_novasoft,
-                "diferencia_total": diferencia_total,
-
-                "terceros_dian": terceros_dian,
-                "terceros_novasoft": terceros_novasoft,
-
-                "registros_dian": registros_dian,
-                "registros_novasoft": registros_novasoft,
-
-                "facturas_dian": facturas_dian,
-                "facturas_novasoft": facturas_novasoft,
-                "facturas_comparadas": facturas_comparadas,
-
-                "conciliados": conciliados,
-                "con_diferencia": con_diferencia,
-
-                "solo_dian": len(solo_dian_out),
-                "solo_novasoft": len(solo_novasoft_out),
-                "dif_montos": len(dif_montos_out),
-            },
-
-            "detalle": detalle,
-            "detalle_raw": comparativo,
-
-            "solo_dian": solo_dian_out,
-            "solo_novasoft": solo_novasoft_out,
-            "dif_montos": dif_montos_out,
-            "conciliados_df": conciliados_out,
+            "resumen": resumen,
+            "detalle": detalle_salida,
+            "detalle_raw": detalle,
+            "solo_dian": solo_dian,
+            "solo_novasoft": solo_novasoft_salida,
+            "dif_montos": dif_montos,
+            "conciliados_df": conciliados_df,
+            "probables_df": _formatear_monedas(_formatear_fechas(probables.drop(columns=["_nova_id"], errors="ignore"), ["Fecha DIAN", "Fecha Novasoft"]), ["Total DIAN", "Total Novasoft", "Diferencia"]),
+            "ambiguas_df": _formatear_fechas(ambiguas.drop(columns=["_nova_id"], errors="ignore"), ["Fecha DIAN", "Fecha Novasoft"]),
         }
 
     except Exception as e:
@@ -945,3 +470,27 @@ def ejecutar_auditoria_service(
             "ok": False,
             "mensaje": f"Error al procesar la conciliación: {e}",
         }
+
+
+def obtener_columnas_disponibles(archivo):
+    df = leer_archivo_tabular(archivo)
+    if df is None or df.empty:
+        return []
+    return [str(c).strip() for c in df.columns if str(c).strip()]
+
+
+def analizar_archivos_para_auditoria(archivo_dian, archivo_novasoft):
+    columnas_dian = obtener_columnas_disponibles(archivo_dian)
+    columnas_novasoft = obtener_columnas_disponibles(archivo_novasoft)
+    return {
+        "columnas_dian": columnas_dian,
+        "columnas_novasoft": columnas_novasoft,
+        "sugerencia_dian": {
+            "col_clave": encontrar_columna(pd.DataFrame(columns=columnas_dian), ALIASES["dian_nit"]),
+            "col_monto": encontrar_columna(pd.DataFrame(columns=columnas_dian), ALIASES["dian_total"]),
+        },
+        "sugerencia_novasoft": {
+            "col_clave": encontrar_columna(pd.DataFrame(columns=columnas_novasoft), ALIASES["nova_nit"]),
+            "col_monto": encontrar_columna(pd.DataFrame(columns=columnas_novasoft), ALIASES["nova_ven_net"]),
+        },
+    }
